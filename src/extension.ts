@@ -110,7 +110,28 @@ export function activate(context: vscode.ExtensionContext) {
 
   // ── Debug Session Events ─────────────────────────────────────────────────
 
-  // When debugger stops (breakpoint / step), refresh variables and auto-update panels.
+  // onDidChangeActiveStackItem fires reliably when the debugger stops at a
+  // breakpoint or after a step (VS Code 1.71+).  This covers Python/debugpy
+  // which does NOT forward the standard DAP "stopped" event via
+  // onDidReceiveDebugSessionCustomEvent.
+  context.subscriptions.push(
+    vscode.debug.onDidChangeActiveStackItem(async (_stackItem) => {
+      const session = vscode.debug.activeDebugSession;
+      if (!session) {
+        return;
+      }
+      const config = vscode.workspace.getConfiguration("matrixViewer");
+      if (config.get<boolean>("autoDetect", true)) {
+        await variablesProvider.autoDetectVariables(session);
+      }
+      if (config.get<boolean>("autoRefresh", true)) {
+        await panelManager.refreshAll(session);
+      }
+    })
+  );
+
+  // Fallback: also listen to custom "stopped" events for debuggers that do
+  // forward them (e.g. some C++ adapters).
   context.subscriptions.push(
     vscode.debug.onDidReceiveDebugSessionCustomEvent(async (e) => {
       if (e.event === "stopped") {

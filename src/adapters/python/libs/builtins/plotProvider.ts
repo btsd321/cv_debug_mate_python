@@ -14,7 +14,8 @@ import { computeStats } from "../utils";
 
 export class BuiltinsPlotProvider implements ILibPlotProvider {
   canHandle(typeName: string): boolean {
-    return /^(list|tuple|array\.array|range)$/i.test(typeName);
+    // Accept both short form ("list") and module-qualified form ("builtins.list")
+    return /^(builtins\.)?(list|tuple|range)$|^array\.array$/i.test(typeName);
   }
 
   async fetchPlotData(

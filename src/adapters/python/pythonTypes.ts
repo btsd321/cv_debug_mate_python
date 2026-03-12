@@ -17,22 +17,27 @@ export { VisualizableKind } from "../IDebugAdapter";
 
 // ── Layer 1: fast path ─────────────────────────────────────────────────────
 
-/** Known type-string fragments → coarse kind */
+/** Known type-string fragments → coarse kind.
+ *
+ * Each array contains patterns for BOTH the fully-qualified form
+ * ("numpy.ndarray") and the short DAP `type` form ("ndarray") that
+ * debugpy returns as `type(obj).__name__`.
+ */
 const IMAGE_TYPE_PATTERNS = [
-  /numpy\.ndarray/i,
-  /PIL\.(Image|JpegImagePlugin|PngImagePlugin)/i,
-  /torch\.Tensor/i,
-  /cv2\.(Mat|UMat|cuda\.GpuMat)/i,
+  /numpy\.ndarray|\bndarray\b/i,                        // "numpy.ndarray" or "ndarray"
+  /PIL\.(Image|JpegImagePlugin|PngImagePlugin)|\bImageFile\b/i, // full OR short PIL class names
+  /torch\.Tensor|\bTensor\b/i,                          // "torch.Tensor" or "Tensor"
+  /cv2\.(Mat|UMat|cuda\.GpuMat)|\b(UMat|GpuMat)\b/i,  // cv2 types (UMat/GpuMat distinguish from cv::Mat)
 ];
 const PLOT_TYPE_PATTERNS = [
-  /^list$/i,
-  /^tuple$/i,
-  /^range$/i,
+  /^(builtins\.)?list$/i,
+  /^(builtins\.)?tuple$/i,
+  /^(builtins\.)?range$/i,
   /array\.array/i,
-  /numpy\.ndarray/i, // Could be 1D — will be refined in Layer 2
-  /torch\.Tensor/i,
+  /numpy\.ndarray|\bndarray\b/i,  // Could be 1D — will be refined in Layer 2
+  /torch\.Tensor|\bTensor\b/i,
 ];
-const POINTCLOUD_TYPE_PATTERNS = [/numpy\.ndarray/i]; // Nx3 / Nx6 ndarray
+const POINTCLOUD_TYPE_PATTERNS = [/numpy\.ndarray|\bndarray\b/i]; // Nx3 / Nx6 ndarray
 
 /**
  * Layer-1 basic detection from the DAP `type` string.

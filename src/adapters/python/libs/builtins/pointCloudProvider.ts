@@ -14,7 +14,7 @@ import { computeBounds } from "../utils";
 
 export class BuiltinsPointCloudProvider implements ILibPointCloudProvider {
   canHandle(typeName: string): boolean {
-    return /^(list|tuple)$/i.test(typeName);
+    return /^(builtins\.)?(list|tuple)$/i.test(typeName);
   }
 
   async fetchPointCloudData(
