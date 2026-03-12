@@ -1,9 +1,34 @@
 import eslint from "@eslint/js";
-import tseslint from "typescript-eslint";
+import tsParser from "@typescript-eslint/parser";
+import tsPlugin from "@typescript-eslint/eslint-plugin";
+import globals from "globals";
 
-export default tseslint.config(
+export default [
   eslint.configs.recommended,
-  ...tseslint.configs.recommended,
+  {
+    files: ["src/**/*.ts"],
+    ignores: ["src/test/**"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: { project: true, tsconfigRootDir: import.meta.dirname },
+      globals: { ...globals.node },
+    },
+    plugins: { "@typescript-eslint": tsPlugin },
+    rules: {
+      ...tsPlugin.configs.recommended.rules,
+    },
+  },
+  {
+    files: ["src/test/**/*.ts"],
+    languageOptions: {
+      parser: tsParser,
+      globals: { ...globals.node, ...globals.mocha },
+    },
+    plugins: { "@typescript-eslint": tsPlugin },
+    rules: {
+      ...tsPlugin.configs.recommended.rules,
+    },
+  },
   {
     rules: {
       "@typescript-eslint/naming-convention": [
@@ -21,5 +46,5 @@ export default tseslint.config(
       "no-throw-literal": "warn",
       semi: "warn",
     },
-  }
-);
+  },
+];
