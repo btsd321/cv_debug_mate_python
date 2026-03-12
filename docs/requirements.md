@@ -314,9 +314,9 @@ Webview 渲染
 | `pointcloud-viewer.js` | ✅ | Three.js 场景、OrbitControls、按轴着色、Save PLY |
 | `colormaps.js` | ✅ | gray / jet / hot / viridis / plasma LUT |
 | `image-viewer.css` / `plot-viewer.css` / `pointcloud-viewer.css` | ✅ | 样式 |
-| `uplot.iife.min.js` | ❌ | **未下载，阻塞 Plot Viewer 运行** |
-| `three.min.js` | ❌ | **未下载，阻塞 Point Cloud Viewer 运行** |
-| `OrbitControls.js` | ❌ | **未下载，阻塞 Point Cloud Viewer 运行** |
+| `uplot.iife.min.js` | ✅ 已下载（uPlot latest）|
+| `three.min.js` | ✅ 已下载（Three.js r127）|
+| `OrbitControls.js` | ✅ 已下载（Three.js r127 legacy）|
 
 #### 测试
 - `src/test/pythonTypes.test.ts` — pythonTypes.ts 纯函数单元测试（已有）
@@ -327,25 +327,47 @@ Webview 渲染
 
 #### P0（阻塞运行——必须先处理）
 
-1. **下载三个 vendor 前端库**（未下载则 Plot/点云 Viewer 完全无法运行）：
-   ```bash
-   cd media
-   curl -L -o uplot.iife.min.js https://cdn.jsdelivr.net/npm/uplot/dist/uPlot.iife.min.js
-   curl -L -o three.min.js https://cdn.jsdelivr.net/npm/three/build/three.min.js
-   curl -L -o OrbitControls.js "https://cdn.jsdelivr.net/npm/three/examples/js/controls/OrbitControls.js"
-   ```
+1. ~~**下载三个 vendor 前端库**~~ ✅ 已完成（2026-03-12）
+   - `media/uplot.iife.min.js` — uPlot latest
+   - `media/three.min.js` — Three.js r127
+   - `media/OrbitControls.js` — Three.js r127 legacy（全局 `THREE.OrbitControls`）
 
-2. **构建验证**：`npm install && npm run compile` — 确认 TypeScript 编译通过（当前环境缺少 node，尚未验证）
+2. ~~**构建验证**~~ ✅ 已完成（2026-03-12）
+   - Node.js 22.22.1 已安装
+   - `npm install` 完成（node_modules 就绪）
+   - `npm run compile`：tsc 零错误，eslint 零错误，esbuild 打包成功
+   - 修复了 eslint 配置（`typescript-eslint` 统一包 → 分包，补充 Node/mocha globals）
+   - `dist/extension.js` 已生成
 
 #### P1（发布前必须）
 
-3. **扩展图标** `assets/icon.png` — `package.json` 已引用 `"icon": "assets/icon.png"`，缺少会导致发布警告/错误
+3. ~~**扩展图标**~~ ✅ 已完成（2026-03-12）
+   - `package.json` `"icon"` 字段已更新为 `"assets/icon_256x256.ico"`
 
-4. **Python 测试样例项目** `test_python/` — 类似 C++ 版的 `test_cpp/`，包含各类型变量的脚本，用于 F5 手动验证可视化效果：
-   - 包含 `numpy.ndarray`（灰度图、彩色图、1D、点云）
-   - 包含 `PIL.Image`
-   - 包含 `torch.Tensor`（可选，需要 torch）
-   - `requirements.txt`（numpy, Pillow 等）
+4. ~~**Python 测试样例项目**~~ ✅ 已完成（2026-03-12）
+   - `test_python/demo.py` — 覆盖所有支持类型（见下表），使用 `assets/test_img.png`（2048×2048 RGBA）
+   - `test_python/requirements.txt`
+   - `test_python/.vscode/launch.json`（debugpy launch config）
+   - `test_python/README.md`
+
+| demo.py 变量 | 类型 | 对应 Viewer |
+|---|---|---|
+| `grayscale_u8` | ndarray (2048,2048) uint8 | 🖼️ 图像 |
+| `grayscale_f32` | ndarray (2048,2048) float32 | 🖼️ 图像（需 Normalize）|
+| `bgr_u8` | ndarray (2048,2048,3) uint8 | 🖼️ 图像（BGR）|
+| `rgba_u8` | ndarray (2048,2048,4) uint8 | 🖼️ 图像（RGBA）|
+| `small_float_img` | ndarray (64,64) float32 | 🖼️ 图像（小图，float）|
+| `single_ch` | ndarray (2048,2048,1) uint8 | 🖼️ 图像（单通道）|
+| `pil_image` | PIL.Image (RGBA) | 🖼️ 图像 |
+| `pil_gray` | PIL.Image (L) | 🖼️ 图像 |
+| `signal_1d` | ndarray (512,) float32 | 📈 曲线 |
+| `noise_1d` | ndarray (512,) float32 | 📈 曲线 |
+| `ramp_1d` | ndarray (512,) float64 | 📈 曲线 |
+| `my_list` | list[float] | 📈 曲线 |
+| `my_tuple` | tuple[int] | 📈 曲线 |
+| `cloud_xyz` | ndarray (4096,3) float32 | 📊 点云（XYZ）|
+| `cloud_xyzrgb` | ndarray (4096,6) float32 | 📊 点云（XYZ+RGB）|
+| `tiny_img/1d/cloud` | 各类型最小值 | 边界用例 |
 
 #### P2（质量完善）
 

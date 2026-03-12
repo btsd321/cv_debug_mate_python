@@ -12,7 +12,7 @@ import {
   classifyTensor,
   isNumericDtype,
   bytesPerElement,
-} from "../../utils/pythonTypes";
+} from "../utils/pythonTypes";
 
 suite("basicTypeDetect", () => {
   test("numpy.ndarray → image", () => {

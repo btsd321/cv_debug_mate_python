@@ -5,4 +5,7 @@ dist/
 .vscode-test/
 *.log
 .DS_Store
-.vscode/
+# Only ignore user-specific VS Code settings; keep launch/tasks configs
+.vscode/settings.json
+.vscode/*.code-workspace
+.venv/
