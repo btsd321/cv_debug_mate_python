@@ -201,8 +201,7 @@ Is the function used by more than one libName/ folder?
 | `OpenCvImageProvider` (implements `ILibImageProvider`) | `libs/opencv/imageProvider.ts` |
 | `isBasicNumericType`, `is1DVector`, `is2DStdArray`, `isPoint3Vector` | `libs/std/stdUtils.ts` |
 | `StdPlotProvider`, `StdImageProvider`, `StdPointCloudProvider` | `libs/std/*Provider.ts` |
-| `EigenInfo`, `getEigenDataPointer` | `libs/eigen/eigenUtils.ts` |
-| `EigenPlotProvider` | `libs/eigen/plotProvider.ts` |
+| `EigenPlotProvider` (`evalEigenDim`, `getEigenDataPointer` as private helpers) | `libs/eigen/plotProvider.ts` |
 | `PclPointCloudProvider` | `libs/pcl/pointCloudProvider.ts` |
 | `isValidMemoryReference`, `readMemoryChunked`, `getCurrentFrameId`, `getContainerSize` | `cppDebugger.ts` |
 | `build2DDataPointerExpressions`, `build3DDataPointerExpressions` | `cppDebugger.ts` |

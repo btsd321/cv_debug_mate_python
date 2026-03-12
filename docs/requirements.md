@@ -322,8 +322,8 @@ Webview 渲染
 - [x] `std::vector<T>` / `std::array<T,N>` / `T[N]` 曲线数据获取（通过 `libs/std/plotProvider.ts`）
 - [x] 2D/3D `std::array` 和 C-style array 图像数据获取（通过 `libs/std/imageProvider.ts`）
 - [x] `std::vector<cv::Point3f/d>` / `std::array<cv::Point3f/d,N>` 点云数据获取（通过 `libs/std/pointCloudProvider.ts`）
-- [ ] `Eigen::Matrix` 图像 / 曲线数据获取（`libs/eigen/plotProvider.ts` 待实现）
-- [ ] `pcl::PointCloud` 点云数据获取（`libs/pcl/pointCloudProvider.ts` 待实现）
+- [x] `Eigen::Matrix` / `Eigen::Array` / `Eigen::VectorX` 曲线数据获取（`libs/eigen/plotProvider.ts`）
+- [x] `pcl::PointCloud<PointXYZ/XYZRGB/XYZRGBA/XYZI>` 点云数据获取（`libs/pcl/pointCloudProvider.ts`）
 
 ---
 
@@ -376,8 +376,8 @@ Webview 渲染
 | `src/adapters/cpp/libs/std/plotProvider.ts` | ✅ | std::vector / std::array / T[N] 1D 曲线获取 |
 | `src/adapters/cpp/libs/std/imageProvider.ts` | ✅ | 2D/3D std::array 和 C-style array 图像获取 |
 | `src/adapters/cpp/libs/std/pointCloudProvider.ts` | ✅ | std::vector / std::array of cv::Point3f/d 点云获取 |
-| `src/adapters/cpp/libs/eigen/plotProvider.ts` | 🔲 TODO | Eigen::Matrix 骨架（fetchPlotData 返回 null）|
-| `src/adapters/cpp/libs/pcl/pointCloudProvider.ts` | 🔲 TODO | pcl::PointCloud 骨架（fetchPointCloudData 返回 null）|
+| `src/adapters/cpp/libs/eigen/plotProvider.ts` | ✅ | Eigen::Matrix/Array/VectorX 曲线获取（rows()/cols()/data() 路径）|
+| `src/adapters/cpp/libs/pcl/pointCloudProvider.ts` | ✅ | pcl::PointCloud<PointXYZ/RGB/RGBA/I> 点云获取（points.data() 路径）|
 | `src/viewers/viewerTypes.ts` | ✅ | 语言无关统一展示数据类型 |
 | `src/utils/panelManager.ts` | ✅ | Webview 面板生命周期、自动刷新、sync broadcast（使用 IDebugAdapter）|
 | `src/utils/syncManager.ts` | ✅ | idle → waiting → paired 状态机 |
