@@ -29,7 +29,9 @@
   let dragStartY = 0;
   let normalize = !initData.isUint8;
   let colormap = "gray";
-  let swapBGR = false;
+  // Derive initial BGR-swap state from the image format reported by the extension.
+  // BGR and BGRA images need R/B channels swapped before display.
+  let swapBGR = (initData.format === "BGR" || initData.format === "BGRA");
 
   // ── DOM refs ──────────────────────────────────────────────────────────────
 
@@ -47,8 +49,10 @@
 
   function init() {
     chkNormalize.checked = normalize;
+    chkBGR.checked = swapBGR;
     renderImage(currentData);
-    infoLabel.textContent = `${currentData.height}×${currentData.width}  ch:${currentData.channels}  ${currentData.dtype}`;
+    const fmtStr = currentData.format ? `  ${currentData.format}` : "";
+    infoLabel.textContent = `${currentData.height}×${currentData.width}  ch:${currentData.channels}  ${currentData.dtype}${fmtStr}`;
 
     chkNormalize.addEventListener("change", () => {
       normalize = chkNormalize.checked;
@@ -118,7 +122,7 @@
     const scale = normalize ? 255 / (dataMax - dataMin || 1) : 1;
 
     for (let i = 0; i < n; i++) {
-      let r, g, b;
+      let r, g, b, a = 255;
       if (channels === 1) {
         const val = (typed[i] - (normalize ? dataMin : 0)) * scale;
         if (colormap === "gray" || !colormap) {
@@ -137,11 +141,15 @@
         } else {
           r = ch0; g = ch1; b = ch2;
         }
+        // Preserve alpha channel when present (RGBA / BGRA)
+        if (channels === 4) {
+          a = (typed[base + 3] - (normalize ? dataMin : 0)) * scale;
+        }
       }
       out[i * 4 + 0] = r;
       out[i * 4 + 1] = g;
       out[i * 4 + 2] = b;
-      out[i * 4 + 3] = 255;
+      out[i * 4 + 3] = a;
     }
     return out;
   }

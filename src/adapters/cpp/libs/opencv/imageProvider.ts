@@ -16,7 +16,7 @@
 
 import * as vscode from "vscode";
 import { VariableInfo } from "../../../IDebugAdapter";
-import { ImageData } from "../../../../viewers/viewerTypes";
+import { ImageData, ImageFormat } from "../../../../viewers/viewerTypes";
 import { ILibImageProvider } from "../../../ILibProviders";
 import {
   isUsingLLDB,
@@ -81,6 +81,8 @@ export class OpenCvImageProvider implements ILibImageProvider {
       dataMin,
       dataMax,
       varName,
+      // cv::Mat uses BGR channel order by convention
+      format: (channels === 1 ? "GRAY" : channels === 4 ? "BGRA" : "BGR") as ImageFormat,
     };
   }
 }

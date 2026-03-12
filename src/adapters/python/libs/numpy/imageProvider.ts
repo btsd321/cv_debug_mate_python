@@ -7,7 +7,7 @@
 
 import * as vscode from "vscode";
 import { VariableInfo } from "../../../IDebugAdapter";
-import { ImageData } from "../../../../viewers/viewerTypes";
+import { ImageData, ImageFormat } from "../../../../viewers/viewerTypes";
 import { ILibImageProvider } from "../../../ILibProviders";
 import { fetchArrayData } from "../../pythonDebugger";
 import { resolveHWC, computeMinMax, bufferToBase64 } from "../utils";
@@ -30,6 +30,7 @@ export class NumpyImageProvider implements ILibImageProvider {
     }
 
     const [height, width, channels] = resolveHWC(shape);
+    const format = detectNumpyFormat(info.typeName ?? "", varName, channels);
 
     const raw = await fetchArrayData(session, varName, { ...info, shape, dtype });
     if (!raw) {
@@ -48,6 +49,15 @@ export class NumpyImageProvider implements ILibImageProvider {
       dataMin,
       dataMax,
       varName,
+      format,
     };
   }
+}
+
+/** Infer channel order from the type name and variable name. */
+function detectNumpyFormat(typeName: string, varName: string, channels: number): ImageFormat {
+  if (channels === 1) { return "GRAY"; }
+  const isBGR = /cv2\./i.test(typeName) || /\bbgr\b/i.test(varName);
+  if (channels === 4) { return isBGR ? "BGRA" : "RGBA"; }
+  return isBGR ? "BGR" : "RGB";
 }

@@ -11,6 +11,17 @@
 
 // ── Image Viewer ──────────────────────────────────────────────────────────
 
+/**
+ * Channel order / layout of the raw pixel bytes.
+ *
+ * - "RGB"  — standard RGB order (PIL RGB, plain numpy)
+ * - "BGR"  — OpenCV BGR order (cv2.imread, cv2.VideoCapture, etc.)
+ * - "RGBA" — RGB with alpha channel
+ * - "BGRA" — BGR with alpha channel (cv2 4-channel images)
+ * - "GRAY" — single-channel grayscale
+ */
+export type ImageFormat = "RGB" | "BGR" | "RGBA" | "BGRA" | "GRAY";
+
 export interface ImageData {
   /** Flat pixel bytes, C-order, as Base64 string */
   b64Bytes: string;
@@ -24,6 +35,8 @@ export interface ImageData {
   dataMin: number;
   dataMax: number;
   varName: string;
+  /** Channel order of the pixel data; drives auto-init of the BGR toggle */
+  format?: ImageFormat;
 }
 
 // ── Plot Viewer ───────────────────────────────────────────────────────────

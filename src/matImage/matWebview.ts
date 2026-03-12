@@ -54,7 +54,7 @@ export function buildImageWebviewHtml(
         <option value="plasma">Plasma</option>
       </select>
     </label>
-    <label>BGR→RGB <input type="checkbox" id="chk-bgr2rgb"></label>
+    <label>BGR→RGB <input type="checkbox" id="chk-bgr2rgb" ${(data.format === "BGR" || data.format === "BGRA") ? "checked" : ""}></label>
     <button id="btn-reset">Reset</button>
     <button id="btn-save-png">Save PNG</button>
   </div>

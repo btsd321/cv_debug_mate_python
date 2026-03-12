@@ -17,7 +17,7 @@
 
 import * as vscode from "vscode";
 import { VariableInfo } from "../../../IDebugAdapter";
-import { ImageData } from "../../../../viewers/viewerTypes";
+import { ImageData, ImageFormat } from "../../../../viewers/viewerTypes";
 import { ILibImageProvider } from "../../../ILibProviders";
 import { evaluateExpression, fetchArrayData } from "../../pythonDebugger";
 import { resolveHWC, computeMinMax, bufferToBase64 } from "../utils";
@@ -84,6 +84,8 @@ export class OpenCvImageProvider implements ILibImageProvider {
     }
 
     const [height, width, channels] = resolveHWC(shape);
+    // cv2 always stores in BGR order
+    const format: ImageFormat = channels === 1 ? "GRAY" : channels === 4 ? "BGRA" : "BGR";
 
     // ── Fetch raw bytes ───────────────────────────────────────────────────
     // If ndarrayExpr is just varName, reuse fetchArrayData directly.
@@ -149,6 +151,7 @@ export class OpenCvImageProvider implements ILibImageProvider {
       dataMin,
       dataMax,
       varName,
+      format,
     };
   }
 }

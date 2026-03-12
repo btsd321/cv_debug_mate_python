@@ -7,7 +7,7 @@
 
 import * as vscode from "vscode";
 import { VariableInfo } from "../../../IDebugAdapter";
-import { ImageData } from "../../../../viewers/viewerTypes";
+import { ImageData, ImageFormat } from "../../../../viewers/viewerTypes";
 import { ILibImageProvider } from "../../../ILibProviders";
 import { evaluateExpression } from "../../pythonDebugger";
 
@@ -61,6 +61,7 @@ export class PilImageProvider implements ILibImageProvider {
       dataMin: 0,
       dataMax: 255,
       varName,
+      format: pilModeToFormat(meta.mode),
     };
   }
 }
@@ -70,4 +71,10 @@ function pilModeToChannels(mode: string): number {
   if (mode === "RGB") { return 3; }
   if (mode === "RGBA" || mode === "CMYK") { return 4; }
   return 3;
+}
+
+function pilModeToFormat(mode: string): ImageFormat {
+  if (mode === "L" || mode === "P") { return "GRAY"; }
+  if (mode === "RGBA") { return "RGBA"; }
+  return "RGB";
 }

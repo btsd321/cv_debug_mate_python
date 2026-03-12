@@ -16,7 +16,7 @@
 
 import * as vscode from "vscode";
 import { VariableInfo } from "../../../IDebugAdapter";
-import { ImageData } from "../../../../viewers/viewerTypes";
+import { ImageData, ImageFormat } from "../../../../viewers/viewerTypes";
 import { ILibImageProvider } from "../../../ILibProviders";
 import {
   readMemoryChunked,
@@ -154,6 +154,8 @@ export class StdImageProvider implements ILibImageProvider {
       dataMin,
       dataMax,
       varName,
+      // C++ std array images assume RGB order (no cv2 convention)
+      format: (channels === 1 ? "GRAY" : channels === 4 ? "RGBA" : "RGB") as ImageFormat,
     };
   }
 }

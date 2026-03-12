@@ -11,6 +11,9 @@ import { PanelManager } from "./utils/panelManager";
 import { SyncManager } from "./utils/syncManager";
 import { getAdapter } from "./adapters/adapterRegistry";
 
+// [DEBUG] Dedicated output channel — delete alongside all [DEBUG] lines when done
+const debugOut = vscode.window.createOutputChannel("MatrixViewer Debug");
+
 export function activate(context: vscode.ExtensionContext) {
   const panelManager = new PanelManager(context);
   const syncManager = new SyncManager();
@@ -165,11 +168,15 @@ async function visualizeVariable(
   panelManager: PanelManager,
   syncManager: SyncManager
 ): Promise<void> {
+  debugOut.appendLine(`[DEBUG] visualizeVariable called: varName="${varName}"`); // [DEBUG]
+  debugOut.show(true); // [DEBUG]
   const session = vscode.debug.activeDebugSession;
   if (!session) {
     vscode.window.showWarningMessage("MatrixViewer: No active debug session.");
+    debugOut.appendLine(`[DEBUG] No active debug session`); // [DEBUG]
     return;
   }
+  debugOut.appendLine(`[DEBUG] session.type="${session.type}" session.id="${session.id}"`); // [DEBUG]
 
   // Reuse existing panel if already open
   if (panelManager.hasPanel(varName)) {
@@ -182,8 +189,10 @@ async function visualizeVariable(
     vscode.window.showWarningMessage(
       `MatrixViewer: Unsupported debug session type "${session.type}".`
     );
+    debugOut.appendLine(`[DEBUG] No adapter for session type "${session.type}"`); // [DEBUG]
     return;
   }
+  debugOut.appendLine(`[DEBUG] adapter found: ${adapter.constructor.name}`); // [DEBUG]
 
   let varInfo: Awaited<ReturnType<typeof adapter.getVariableInfo>>;
   try {
@@ -192,8 +201,10 @@ async function visualizeVariable(
     vscode.window.showErrorMessage(
       `MatrixViewer: Failed to inspect "${varName}": ${e}`
     );
+    debugOut.appendLine(`[DEBUG] getVariableInfo threw: ${e}`); // [DEBUG]
     return;
   }
+  debugOut.appendLine(`[DEBUG] varInfo=${JSON.stringify(varInfo)}`); // [DEBUG]
 
   if (!varInfo) {
     vscode.window.showWarningMessage(
@@ -203,6 +214,7 @@ async function visualizeVariable(
   }
 
   const vizType = adapter.detectVisualizableType(varInfo);
+  debugOut.appendLine(`[DEBUG] detectVisualizableType → "${vizType}"`); // [DEBUG]
 
   await vscode.window.withProgress(
     {
@@ -214,6 +226,7 @@ async function visualizeVariable(
       switch (vizType) {
         case "image": {
           const data = await adapter.fetchImageData(session, varName, varInfo!);
+          debugOut.appendLine(`[DEBUG] fetchImageData result: ${data ? "OK" : "null"}`); // [DEBUG]
           if (data) {
             panelManager.openImagePanel(varName, data, context, syncManager);
           }
@@ -221,6 +234,7 @@ async function visualizeVariable(
         }
         case "plot": {
           const data = await adapter.fetchPlotData(session, varName, varInfo!);
+          debugOut.appendLine(`[DEBUG] fetchPlotData result: ${data ? "OK" : "null"}`); // [DEBUG]
           if (data) {
             panelManager.openPlotPanel(varName, data, context, syncManager);
           }
@@ -228,6 +242,7 @@ async function visualizeVariable(
         }
         case "pointcloud": {
           const data = await adapter.fetchPointCloudData(session, varName, varInfo!);
+          debugOut.appendLine(`[DEBUG] fetchPointCloudData result: ${data ? "OK" : "null"}`); // [DEBUG]
           if (data) {
             panelManager.openPointCloudPanel(
               varName,

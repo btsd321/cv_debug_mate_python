@@ -14,6 +14,7 @@
  */
 
 import * as vscode from "vscode";
+import * as net from "net";
 import { VariableInfo } from "../IDebugAdapter";
 
 // Re-export VariableInfo so legacy imports via utils/debugger still work.
@@ -225,35 +226,93 @@ async function fetchArraySmall(
   }
 }
 
-/** Large arrays: Base64 binary path via tobytes() */
+/**
+ * Large arrays: loopback TCP socket transfer (bypasses DAP string-length limit).
+ *
+ * Inspired by https://github.com/elazarcoh/simply-view-image-for-python-debugging
+ *
+ * Flow:
+ *   1. Node.js opens a TCP server on a random localhost port.
+ *   2. A single DAP evaluate call sends a Python lambda that connects to the
+ *      server and calls sendall(arr.tobytes()).  The lambda is a pure expression
+ *      so it runs synchronously inside debugpy's evaluate thread.
+ *   3. Node.js buffers the incoming bytes; resolves when Python closes the socket.
+ *
+ * No files are written.  Loopback throughput is typically >500 MB/s,
+ * so a 12 MB array transfers in ~25 ms.
+ */
+const SOCKET_TRANSFER_TIMEOUT_MS = 20_000;
+
 async function fetchArrayLarge(
   session: vscode.DebugSession,
   varName: string,
   info: VariableInfo
 ): Promise<RawArrayData | null> {
-  // Ensure C-contiguous layout before tobytes
-  const expr =
-    `__import__('base64').b64encode(` +
-    `(__import__('numpy').ascontiguousarray(${varName}) if hasattr(${varName}, 'flags') ` +
-    `else ${varName}).tobytes()` +
-    `).decode('ascii')`;
+  return new Promise<RawArrayData | null>((resolve) => {
+    const server = net.createServer();
+    const chunks: Buffer[] = [];
+    let settled = false;
 
-  const result = await evaluateExpression(session, expr, info.frameId);
-  if (!result) {
-    return null;
-  }
-
-  try {
-    const b64 = result.replace(/^'|'$/g, "");
-    const binaryStr = atob(b64);
-    const buffer = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      buffer[i] = binaryStr.charCodeAt(i);
+    function settle(result: RawArrayData | null): void {
+      if (settled) { return; }
+      settled = true;
+      clearTimeout(timer);
+      // close() is idempotent; ignore the error if already closed
+      server.close();
+      resolve(result);
     }
-    return { buffer, dtype: info.dtype!, shape: info.shape! };
-  } catch {
-    return null;
-  }
+
+    // Hard deadline: give up if nothing arrives within the timeout
+    const timer = setTimeout(() => settle(null), SOCKET_TRANSFER_TIMEOUT_MS);
+
+    server.once("error", () => settle(null));
+
+    server.once("connection", (socket) => {
+      socket.on("data", (chunk: Buffer) => chunks.push(chunk));
+      socket.once("end", () => {
+        const buf = Buffer.concat(chunks);
+        settle({
+          buffer: new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength),
+          dtype: info.dtype!,
+          shape: info.shape!,
+        });
+      });
+      socket.once("error", () => settle(null));
+    });
+
+    // Start listening on a kernel-assigned random port, then trigger Python
+    server.listen(0, "127.0.0.1", async () => {
+      const port = (server.address() as net.AddressInfo).port;
+
+      // Pure Python expression (no exec, no global mutation):
+      //   outer lambda receives (bytes, port)
+      //   inner lambda receives socket, calls connect / sendall / close
+      const bytesExpr = buildToBytesExpr(varName);
+      const sendExpr =
+        `(lambda __arr, __port:` +
+        ` (lambda __s: (__s.connect(('127.0.0.1', __port)), __s.sendall(__arr), __s.close()))` +
+        ` (__import__('socket').socket()))` +
+        `(${bytesExpr}, ${port})`;
+
+      const evalResult = await evaluateExpression(session, sendExpr, info.frameId);
+      // null means evaluate timed-out or Python raised an exception;
+      // in both cases there will be no meaningful data on the socket.
+      if (evalResult === null) {
+        settle(null);
+      }
+      // Otherwise the socket 'end' handler will call settle() with the data.
+    });
+  });
+}
+
+/**
+ * Build the Python expression that produces raw bytes for the array.
+ * The `varName` may itself be a compound expression (e.g. the torch provider
+ * passes `__import__('numpy').array(tensor.detach().cpu().float())`),
+ * so we simply wrap it with ascontiguousarray to ensure C-order layout.
+ */
+function buildToBytesExpr(varName: string): string {
+  return `__import__('numpy').ascontiguousarray(${varName}).tobytes()`;
 }
 
 // ── Pure list/tuple fetch ─────────────────────────────────────────────────

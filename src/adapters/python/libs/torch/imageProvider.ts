@@ -7,7 +7,7 @@
 
 import * as vscode from "vscode";
 import { VariableInfo } from "../../../IDebugAdapter";
-import { ImageData } from "../../../../viewers/viewerTypes";
+import { ImageData, ImageFormat } from "../../../../viewers/viewerTypes";
 import { ILibImageProvider } from "../../../ILibProviders";
 import { fetchArrayData } from "../../pythonDebugger";
 import { resolveHWC, computeMinMax, bufferToBase64 } from "../utils";
@@ -52,6 +52,8 @@ export class TorchImageProvider implements ILibImageProvider {
 
     const [height, width, channels] = resolveHWC(normalisedShape);
     const { dataMin, dataMax } = computeMinMax(raw.buffer, "float32");
+    // Torch tensors follow RGB convention by default
+    const format: ImageFormat = channels === 1 ? "GRAY" : "RGB";
 
     return {
       b64Bytes: bufferToBase64(raw.buffer),
@@ -63,6 +65,7 @@ export class TorchImageProvider implements ILibImageProvider {
       dataMin,
       dataMax,
       varName,
+      format,
     };
   }
 }
