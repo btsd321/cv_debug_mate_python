@@ -14,7 +14,7 @@
   const vscode = acquireVsCodeApi();
 
   /** @type {PointCloudData} */
-  let data = window.__cvDebugMate.initData;
+  let data = window.__matrixViewer.initData;
 
   let renderer, scene, camera, controls, points;
 

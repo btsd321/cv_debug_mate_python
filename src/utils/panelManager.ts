@@ -200,7 +200,7 @@ export class PanelManager {
 
     const title = `${varName} [${kind}]`;
     const panel = vscode.window.createWebviewPanel(
-      `cvDebugMate.${kind}`,
+      `matrixViewer.${kind}`,
       title,
       vscode.ViewColumn.Beside,
       {

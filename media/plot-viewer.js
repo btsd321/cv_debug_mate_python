@@ -13,7 +13,7 @@
   const vscode = acquireVsCodeApi();
 
   /** @type {PlotData} */
-  let data = window.__cvDebugMate.initData;
+  let data = window.__matrixViewer.initData;
 
   let plotInstance = null;
   let mode = "line";

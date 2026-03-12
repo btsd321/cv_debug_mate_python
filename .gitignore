@@ -9,3 +9,7 @@ dist/
 .vscode/settings.json
 .vscode/*.code-workspace
 .venv/
+
+*.db
+*.db-shm
+*.db-wal

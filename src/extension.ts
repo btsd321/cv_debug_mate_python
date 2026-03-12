@@ -1,5 +1,5 @@
 /**
- * CV DebugMate Python - Extension Entry Point
+ * MatrixViewer Debug - Extension Entry Point
  *
  * Registers all commands, views, and debug event listeners.
  * Coordinates the visualization pipeline when debugging stops.
@@ -21,7 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
   const variablesProvider = new CvVariablesProvider(context, panelManager);
 
   // Register the TreeView in the Debug sidebar
-  const treeView = vscode.window.createTreeView("cvDebugMatePanel", {
+  const treeView = vscode.window.createTreeView("matrixViewerPanel", {
     treeDataProvider: variablesProvider,
     showCollapseAll: true,
   });
@@ -31,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "cvDebugMate.viewVariable",
+      "matrixViewer.viewVariable",
       async (item: CvVariableItem | string) => {
         const varName =
           typeof item === "string" ? item : item?.variableName ?? "";
@@ -50,7 +50,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "cvDebugMate.addToPanel",
+      "matrixViewer.addToPanel",
       async (variable: { name: string; value: string; type: string }) => {
         if (!variable?.name) {
           return;
@@ -62,7 +62,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "cvDebugMate.removeFromPanel",
+      "matrixViewer.removeFromPanel",
       (item: CvVariableItem) => {
         if (item?.variableName) {
           variablesProvider.removeVariable(item.variableName);
@@ -72,25 +72,25 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("cvDebugMate.refreshPanel", () => {
+    vscode.commands.registerCommand("matrixViewer.refreshPanel", () => {
       variablesProvider.refresh();
     })
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "cvDebugMate.syncPair",
+      "matrixViewer.syncPair",
       async (item: CvVariableItem) => {
         const existing = syncManager.getPendingPair();
         if (!existing) {
           syncManager.startPairing(item.variableName);
           vscode.window.showInformationMessage(
-            `CV DebugMate: selected "${item.variableName}" for sync pairing. Now select the second variable.`
+            `MatrixViewer: selected "${item.variableName}" for sync pairing. Now select the second variable.`
           );
         } else {
           syncManager.completePairing(item.variableName, panelManager);
           vscode.window.showInformationMessage(
-            `CV DebugMate: "${existing}" and "${item.variableName}" are now synced.`
+            `MatrixViewer: "${existing}" and "${item.variableName}" are now synced.`
           );
         }
       }
@@ -99,7 +99,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "cvDebugMate.addToGroup",
+      "matrixViewer.addToGroup",
       async (item: CvVariableItem) => {
         const groupName = await vscode.window.showInputBox({
           prompt: "Enter group name",
@@ -118,7 +118,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.debug.onDidReceiveDebugSessionCustomEvent(async (e) => {
       if (e.event === "stopped") {
-        const config = vscode.workspace.getConfiguration("cvDebugMate");
+        const config = vscode.workspace.getConfiguration("matrixViewer");
         if (config.get<boolean>("autoDetect", true)) {
           await variablesProvider.autoDetectVariables(e.session);
         }
@@ -150,7 +150,7 @@ async function visualizeVariable(
 ): Promise<void> {
   const session = vscode.debug.activeDebugSession;
   if (!session) {
-    vscode.window.showWarningMessage("CV DebugMate: No active debug session.");
+    vscode.window.showWarningMessage("MatrixViewer: No active debug session.");
     return;
   }
 
@@ -165,14 +165,14 @@ async function visualizeVariable(
     varInfo = await getVariableInfo(session, varName);
   } catch (e) {
     vscode.window.showErrorMessage(
-      `CV DebugMate: Failed to inspect "${varName}": ${e}`
+      `MatrixViewer: Failed to inspect "${varName}": ${e}`
     );
     return;
   }
 
   if (!varInfo) {
     vscode.window.showWarningMessage(
-      `CV DebugMate: Cannot resolve variable "${varName}".`
+      `MatrixViewer: Cannot resolve variable "${varName}".`
     );
     return;
   }
@@ -182,7 +182,7 @@ async function visualizeVariable(
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: `CV DebugMate: loading "${varName}"…`,
+      title: `MatrixViewer: loading "${varName}"…`,
       cancellable: false,
     },
     async () => {
@@ -218,7 +218,7 @@ async function visualizeVariable(
         }
         default:
           vscode.window.showWarningMessage(
-            `CV DebugMate: "${varName}" is not a supported visualizable type.`
+            `MatrixViewer: "${varName}" is not a supported visualizable type.`
           );
       }
     }

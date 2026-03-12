@@ -57,7 +57,7 @@ export function buildPlotWebviewHtml(
   <div id="plot-container"></div>
 
   <script nonce="${nonce}">
-    window.__cvDebugMate = { initData: ${JSON.stringify(data)} };
+    window.__matrixViewer = { initData: ${JSON.stringify(data)} };
   </script>
   <script nonce="${nonce}" src="${mediaUri("uplot.iife.min.js")}"></script>
   <script nonce="${nonce}" src="${mediaUri("plot-viewer.js")}"></script>

@@ -1,7 +1,7 @@
 /**
  * image-viewer.js — Front-end logic for the 2D Image Viewer webview.
  *
- * Picks up bootstrap data from window.__cvDebugMate.initData and renders
+ * Picks up bootstrap data from window.__matrixViewer.initData and renders
  * the image on a <canvas> element. Handles zoom/pan, normalisation,
  * colormap, channel reorder, hover info, and save actions.
  *
@@ -16,7 +16,7 @@
   const vscode = acquireVsCodeApi();
 
   /** @type {ImageData} */
-  const initData = window.__cvDebugMate.initData;
+  const initData = window.__matrixViewer.initData;
 
   // ── State ─────────────────────────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 {
-  "name": "cv-debugmate-python",
-  "displayName": "CV DebugMate Python",
+  "name": "matrix-viewer",
+  "displayName": "MatrixViewer Debug",
   "description": "Visualize 1/2/3D Python data structures (numpy, PIL, PyTorch) during debugging",
   "version": "0.1.0",
   "publisher": "cv-debugmate",
@@ -36,114 +36,114 @@
   "contributes": {
     "commands": [
       {
-        "command": "cvDebugMate.viewVariable",
-        "title": "View by CV DebugMate",
-        "category": "CV DebugMate"
+        "command": "matrixViewer.viewVariable",
+        "title": "View by MatrixViewer",
+        "category": "MatrixViewer"
       },
       {
-        "command": "cvDebugMate.addToPanel",
-        "title": "Add to CV DebugMate Panel",
-        "category": "CV DebugMate"
+        "command": "matrixViewer.addToPanel",
+        "title": "Add to MatrixViewer Panel",
+        "category": "MatrixViewer"
       },
       {
-        "command": "cvDebugMate.addToGroup",
+        "command": "matrixViewer.addToGroup",
         "title": "Add to Group",
-        "category": "CV DebugMate"
+        "category": "MatrixViewer"
       },
       {
-        "command": "cvDebugMate.removeFromPanel",
+        "command": "matrixViewer.removeFromPanel",
         "title": "Remove from Panel",
         "icon": "$(close)",
-        "category": "CV DebugMate"
+        "category": "MatrixViewer"
       },
       {
-        "command": "cvDebugMate.syncPair",
+        "command": "matrixViewer.syncPair",
         "title": "Pair for Sync",
-        "category": "CV DebugMate"
+        "category": "MatrixViewer"
       },
       {
-        "command": "cvDebugMate.refreshPanel",
+        "command": "matrixViewer.refreshPanel",
         "title": "Refresh Panel",
         "icon": "$(refresh)",
-        "category": "CV DebugMate"
+        "category": "MatrixViewer"
       }
     ],
     "views": {
       "debug": [
         {
-          "id": "cvDebugMatePanel",
-          "name": "CV DebugMate",
-          "when": "debugState == 'stopped' || cvDebugMate.active"
+          "id": "matrixViewerPanel",
+          "name": "MatrixViewer Debug",
+          "when": "debugState == 'stopped' || matrixViewer.active"
         }
       ]
     },
     "menus": {
       "view/title": [
         {
-          "command": "cvDebugMate.refreshPanel",
-          "when": "view == cvDebugMatePanel",
+          "command": "matrixViewer.refreshPanel",
+          "when": "view == matrixViewerPanel",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "cvDebugMate.viewVariable",
-          "when": "view == cvDebugMatePanel && viewItem == cvVariable",
+          "command": "matrixViewer.viewVariable",
+          "when": "view == matrixViewerPanel && viewItem == mvVariable",
           "group": "inline"
         },
         {
-          "command": "cvDebugMate.removeFromPanel",
-          "when": "view == cvDebugMatePanel && viewItem == cvVariable",
+          "command": "matrixViewer.removeFromPanel",
+          "when": "view == matrixViewerPanel && viewItem == mvVariable",
           "group": "inline"
         },
         {
-          "command": "cvDebugMate.syncPair",
-          "when": "view == cvDebugMatePanel && viewItem == cvVariable",
+          "command": "matrixViewer.syncPair",
+          "when": "view == matrixViewerPanel && viewItem == mvVariable",
           "group": "1_actions"
         },
         {
-          "command": "cvDebugMate.addToGroup",
-          "when": "view == cvDebugMatePanel && viewItem == cvVariable",
+          "command": "matrixViewer.addToGroup",
+          "when": "view == matrixViewerPanel && viewItem == mvVariable",
           "group": "1_actions"
         }
       ],
       "debug/variables/context": [
         {
-          "command": "cvDebugMate.viewVariable",
+          "command": "matrixViewer.viewVariable",
           "when": "debugState == 'stopped'",
           "group": "navigation"
         },
         {
-          "command": "cvDebugMate.addToPanel",
+          "command": "matrixViewer.addToPanel",
           "when": "debugState == 'stopped'",
           "group": "navigation"
         }
       ]
     },
     "configuration": {
-      "title": "CV DebugMate",
+      "title": "MatrixViewer",
       "properties": {
-        "cvDebugMate.autoDetect": {
+        "matrixViewer.autoDetect": {
           "type": "boolean",
           "default": true,
           "description": "Automatically detect visualizable variables in the current scope when debugging stops"
         },
-        "cvDebugMate.autoRefresh": {
+        "matrixViewer.autoRefresh": {
           "type": "boolean",
           "default": true,
           "description": "Automatically refresh open viewers when stepping through code"
         },
-        "cvDebugMate.largeDataThresholdMB": {
+        "matrixViewer.largeDataThresholdMB": {
           "type": "number",
           "default": 1,
           "description": "Data size threshold (in MB) for switching to Base64 binary transfer instead of JSON"
         },
-        "cvDebugMate.maxDisplaySize": {
+        "matrixViewer.maxDisplaySize": {
           "type": "number",
           "default": 50,
           "description": "Maximum number of image megapixels to display (larger images will be downsampled)"
         },
-        "cvDebugMate.defaultColormap": {
+        "matrixViewer.defaultColormap": {
           "type": "string",
           "default": "gray",
           "enum": ["gray", "jet", "hot", "viridis", "plasma"],

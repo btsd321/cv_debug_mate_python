@@ -71,7 +71,7 @@ export function buildImageWebviewHtml(
 
     // Bootstrap the viewer — full implementation is in image-viewer.js
     // loaded below; this object is picked up by that script.
-    window.__cvDebugMate = { initData: INIT_DATA };
+    window.__matrixViewer = { initData: INIT_DATA };
   </script>
   <script nonce="${nonce}" src="${mediaUri("image-viewer.js")}"></script>
 </body>

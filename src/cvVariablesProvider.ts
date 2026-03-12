@@ -1,7 +1,7 @@
 /**
  * CvVariablesProvider
  *
- * VS Code TreeDataProvider for the "CV DebugMate" panel in the Debug sidebar.
+ * VS Code TreeDataProvider for the "MatrixViewer Debug" panel in the Debug sidebar.
  * Maintains a list of pinned + auto-detected visualizable variables,
  * grouped by type (Image / Plot / PointCloud) and optional user-defined groups.
  */
@@ -27,12 +27,12 @@ export class CvVariableItem extends vscode.TreeItem {
     public readonly shapeLabel: string = ""
   ) {
     super(variableName, vscode.TreeItemCollapsibleState.None);
-    this.contextValue = "cvVariable";
+    this.contextValue = "mvVariable";
     this.description = shapeLabel ? `${typeLabel}  ${shapeLabel}` : typeLabel;
     this.tooltip = `${variableName}: ${typeLabel} ${shapeLabel}`.trim();
     this.iconPath = CvVariableItem.iconFor(kind);
     this.command = {
-      command: "cvDebugMate.viewVariable",
+      command: "matrixViewer.viewVariable",
       title: "Visualize",
       arguments: [this],
     };

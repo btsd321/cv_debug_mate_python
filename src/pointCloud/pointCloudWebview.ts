@@ -60,7 +60,7 @@ export function buildPointCloudWebviewHtml(
   <div id="canvas-container"></div>
 
   <script nonce="${nonce}">
-    window.__cvDebugMate = { initData: ${JSON.stringify(data)} };
+    window.__matrixViewer = { initData: ${JSON.stringify(data)} };
   </script>
   <script nonce="${nonce}" src="${mediaUri("three.min.js")}"></script>
   <script nonce="${nonce}" src="${mediaUri("OrbitControls.js")}"></script>
