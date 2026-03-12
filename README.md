@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![debugpy](https://img.shields.io/badge/debugpy-supported-green)](https://github.com/microsoft/debugpy)
 
-[English](#) | [中文](#)
+[English](README.md) | [中文](README_CN.md)
 
 A Visual Studio Code extension for visualizing 1/2/3D data structures during Python debugging.
 
