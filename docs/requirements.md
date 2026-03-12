@@ -424,10 +424,13 @@ Webview 渲染
    - `package.json` `"icon"` 字段已更新为 `"assets/icon_256x256.ico"`
 
 4. ~~**Python 测试样例项目**~~ ✅ 已完成（2026-03-12）
-   - `test_python/demo.py` — 覆盖所有支持类型（见下表），使用 `assets/test_img.png`（2048×2048 RGBA）
-   - `test_python/requirements.txt`
-   - `test_python/.vscode/launch.json`（debugpy launch config）
-   - `test_python/README.md`
+   - `test/test_python/demo.py` — 覆盖所有支持类型（见下表），使用 `assets/test_img.png`（2048×2048 RGBA）
+   - `test/test_python/requirements.txt`
+   - `test/test_python/.vscode/launch.json`（debugpy launch config）
+   - `test/test_python/README.md`
+
+5. **C++ 测试样例项目** 🔲 待完善
+   - `test/test_cpp/` — C++ 调试演示（待补充 demo 代码和 launch.json）
 
 | demo.py 变量 | 类型 | 对应 Viewer |
 |---|---|---|

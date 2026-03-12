@@ -16,13 +16,13 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 
 ## 🚀 Try It Now!
 
-> **📂 Example Project: [`test_python/`](test_python/)**
+> **📂 Example Project: [`test/test_python/`](test/test_python/)**
 >
 > Complete demo with ALL supported types!
 > Run with the debugger to see CV DebugMate in action.
 >
 > ```bash
-> cd test_python
+> cd test/test_python
 > pip install -r requirements.txt
 > # Open in VS Code, set a breakpoint, press F5
 > code .

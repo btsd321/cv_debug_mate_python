@@ -16,13 +16,13 @@
 
 ## 🚀 快速开始！
 
-> **📂 示例项目：[`test_python/`](test_python/)**
+> **📂 示例项目：[`test/test_python/`](test/test_python/)**
 >
 > 包含所有支持类型的完整演示。
 > 打开调试器即可体验 CV DebugMate 的效果。
 >
 > ```bash
-> cd test_python
+> cd test/test_python
 > pip install -r requirements.txt
 > # 在 VS Code 中打开，设置断点，按 F5
 > code .
