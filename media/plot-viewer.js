@@ -24,10 +24,36 @@
   const btnSavePng = document.getElementById("btn-save-png");
   const btnSaveCsv = document.getElementById("btn-save-csv");
   const container = document.getElementById("plot-container");
+  const toolbar   = document.getElementById("toolbar");
+
+  /** Return the pixel dimensions the plot should fill right now. */
+  function plotDimensions() {
+    const w = window.innerWidth  || 800;
+    const h = window.innerHeight - (toolbar ? toolbar.offsetHeight : 0);
+    return { width: w > 0 ? w : 800, height: h > 10 ? h : 400 };
+  }
 
   function init() {
     updateStats(data);
-    buildPlot(data);
+
+    // Use ResizeObserver to drive BOTH the initial build and subsequent resizes.
+    // It fires synchronously when .observe() is called if the element already
+    // has a size, so we never need a setTimeout/rAF to wait for layout.
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(() => {
+        const { width, height } = plotDimensions();
+        if (width <= 0 || height <= 0) { return; }
+        if (!plotInstance) {
+          buildPlot(data);          // first render with correct size
+        } else {
+          plotInstance.setSize({ width, height });
+        }
+      });
+      ro.observe(container);
+    } else {
+      // Fallback for environments without ResizeObserver
+      setTimeout(() => buildPlot(data), 0);
+    }
 
     selMode.addEventListener("change", () => {
       mode = selMode.value;
@@ -60,9 +86,10 @@
     }
 
     // uPlot series configuration
+    const { width, height } = plotDimensions();
     const opts = {
-      width: container.clientWidth || 800,
-      height: container.clientHeight || 400,
+      width,
+      height,
       series: [
         {},
         {
@@ -97,9 +124,10 @@
     }
     const binCenters = Array.from({ length: bins }, (_, i) => min + (i + 0.5) * step);
 
+    const { width, height } = plotDimensions();
     const opts = {
-      width: container.clientWidth || 800,
-      height: container.clientHeight || 400,
+      width,
+      height,
       series: [
         {},
         { label: "count", fill: "rgba(79,195,247,0.4)", stroke: "#4fc3f7", paths: uPlot.paths.bars({ size: [0.9, 100] }) },
