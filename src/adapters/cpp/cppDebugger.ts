@@ -498,7 +498,16 @@ export async function getContainerSize(
     frameId?: number
 ): Promise<number> {
     const exprs = isUsingLLDB(session)
-        ? [`${varName}.size()`, `(long long)${varName}.size()`]
+        ? [
+            `${varName}.size()`,
+            `(long long)${varName}.size()`,
+            // LLDB fallbacks: MSVC STL std::vector (most common with Clang on Windows)
+            `(int)(${varName}._Mypair._Myval2._Mylast - ${varName}._Mypair._Myval2._Myfirst)`,
+            // libstdc++ std::vector
+            `(int)(${varName}._M_impl._M_finish - ${varName}._M_impl._M_start)`,
+            // libc++ std::vector
+            `(int)(${varName}.__end_ - ${varName}.__begin_)`,
+        ]
         : [`(int)${varName}.size()`, `${varName}.size()`, `(long long)${varName}.size()`];
     for (const expr of exprs) {
         const res = await evaluateExpression(session, expr, frameId);

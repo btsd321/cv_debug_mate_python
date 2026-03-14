@@ -179,6 +179,14 @@ int main()
     Eigen::VectorXd eigen_vec(N);
     for (int i = 0; i < N; ++i)
         eigen_vec(i) = std::sin(i * 0.05);
+
+    // Nx2 matrix  →  2D Scatter (col-0 = X, col-1 = Y)
+    Eigen::MatrixXd eigen_scatter(300, 2);
+    for (int i = 0; i < 300; ++i) {
+        double a = i * 2.0 * 3.14159265 / 300;
+        eigen_scatter(i, 0) = std::cos(a);
+        eigen_scatter(i, 1) = std::sin(a);
+    }
 #endif
 
     // =========================================================================

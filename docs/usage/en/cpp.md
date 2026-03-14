@@ -159,7 +159,7 @@ Click any variable name in the **MatrixViewer Debug** panel.
 
 Right-click a variable in the native **Variables** pane → **View by MatrixViewer**.
 
-<!-- TODO: screenshot — right-click context menu on a cv::Mat variable -->
+![Right-click context menu on a cv::Mat variable showing View by MatrixViewer](../../../assets/usage_images/right-click%20context%20menu%20on%20a%20cvMat%20variable.png)
 
 ### Option 3 — Command Palette
 
@@ -183,7 +183,7 @@ Renders `cv::Mat`, 2D/3D `std::array`, and C-style 2D arrays as a zoomable canva
 | Hover pixel info | Move cursor to see `[row, col] = value` |
 | Export | Click **Save PNG** |
 
-<!-- TODO: screenshot — Image Viewer showing a cv::Mat grayscale image with jet colormap -->
+![Image Viewer showing a cv::Mat grayscale image with jet colormap](../../../assets/usage_images/cv_gray_jet.png)
 
 ### Plot Viewer
 
@@ -199,9 +199,9 @@ Renders 1D/2D numeric data as a line chart, scatter chart, or histogram.
 | Export PNG | Click **Save PNG** |
 | Export CSV | Click **Save CSV** |
 
-<!-- TODO: screenshot — Plot Viewer showing an Eigen VectorXd as a 1D line chart -->
+![Plot Viewer showing an Eigen VectorXd as a 1D line chart](../../../assets/usage_images/eigen_1d.png)
 
-<!-- TODO: screenshot — Plot Viewer showing an Eigen MatrixXd (Nx2) as a 2D scatter chart -->
+![Plot Viewer showing an Eigen MatrixXd (Nx2) as a 2D scatter chart](../../../assets/usage_images/eigen_2d.png)
 
 ### Point Cloud Viewer
 
@@ -217,7 +217,7 @@ Renders 3D point clouds using Three.js + OrbitControls.
 | Adjust point size | Use the **Point Size** slider |
 | Export PLY | Click **Save PLY** |
 
-<!-- TODO: screenshot — Point Cloud Viewer showing a pcl::PointCloud colored by Z -->
+![Point Cloud Viewer showing a pcl::PointCloud colored by Z axis](../../../assets/usage_images/cpp_pcl.png)
 
 ---
 
@@ -296,7 +296,7 @@ A ready-to-run C++ demo lives in [`test/test_cpp/`](../../../test/test_cpp/).
 
 4. The debugger stops at the breakpoint. Open the **MatrixViewer Debug** panel to see all detected variables.
 
-<!-- TODO: screenshot — demo.cpp breakpoint hit with MatrixViewer Debug panel showing cv::Mat, Eigen, pcl variables -->
+![demo.cpp breakpoint hit with MatrixViewer Debug panel showing cv::Mat, Eigen, and pcl variables](../../../assets/usage_images/quick_start.png)
 
 ---
 

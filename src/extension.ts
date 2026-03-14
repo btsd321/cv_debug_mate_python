@@ -36,10 +36,21 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "matrixViewer.viewVariable",
-            async (item: MvVariableItem | string) => {
-                const varName =
-                    typeof item === "string" ? item : item?.variableName ?? "";
+            async (item: MvVariableItem | string | { name?: string; variableName?: string }) => {
+                let varName: string;
+                if (typeof item === "string") {
+                    varName = item;
+                } else if (item instanceof MvVariableItem) {
+                    varName = item.variableName;
+                } else {
+                    // Called from debug/variables/context: VS Code passes
+                    // { sessionId, container, variable: { name, value, type, evaluateName, ... } }
+                    const asCtx = item as { variable?: { name?: string; evaluateName?: string }; name?: string };
+                    varName = asCtx.variable?.evaluateName ?? asCtx.variable?.name ?? asCtx.name ?? "";
+                }
+                log("DEBUG", `viewVariable resolved varName: "${varName}"`);
                 if (!varName) {
+                    vscode.window.showWarningMessage("MatrixViewer: could not resolve variable name from context.");
                     return;
                 }
                 await visualizeVariable(
@@ -260,7 +271,7 @@ async function visualizeVariable(
                     break;
                 }
                 case "pointcloud": {
-                    const data = await adapter.fetchPointCloudData(session, varName, varInfo!);
+                    const data = await adapter.fetchPointCloudData(session, varName, varInfo!, log);
                     log("DEBUG", `fetchPointCloudData result: ${data ? "OK" : "null"}`);
                     if (data) {
                         panelManager.openPointCloudPanel(

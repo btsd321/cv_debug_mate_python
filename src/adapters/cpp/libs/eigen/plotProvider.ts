@@ -45,8 +45,16 @@ export class EigenPlotProvider implements ILibPlotProvider {
         const typeStr = info.typeName ?? info.type;
 
         // ── Step 1: dimensions ────────────────────────────────────────────────
-        const rows = await evalEigenDim(session, varName, "rows", frameId);
-        const cols = await evalEigenDim(session, varName, "cols", frameId);
+        // Prefer pre-resolved shape from getVariableInfo (avoids a second
+        // round of LLDB evaluate calls that may fail on Windows/LLDB).
+        let rows: number;
+        let cols: number;
+        if (info.shape && info.shape.length >= 2 && info.shape[0] > 0 && info.shape[1] > 0) {
+            [rows, cols] = info.shape;
+        } else {
+            rows = await evalEigenDim(session, varName, "rows", frameId);
+            cols = await evalEigenDim(session, varName, "cols", frameId);
+        }
 
         if (rows <= 0 || cols <= 0) {
             return null;

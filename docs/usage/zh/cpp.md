@@ -159,7 +159,7 @@ make -j$(nproc)
 
 在原生**变量**面板中右键点击变量 → **View by MatrixViewer**。
 
-<!-- TODO: 截图 — 在 cv::Mat 变量上右键弹出菜单 -->
+![在 cv::Mat 变量上右键弹出菜单，显示 View by MatrixViewer](../../../assets/usage_images/right-click%20context%20menu%20on%20a%20cvMat%20variable.png)
 
 ### 方式三：命令面板
 
@@ -183,7 +183,7 @@ make -j$(nproc)
 | 悬停像素信息 | 移动光标查看 `[行, 列] = 值` |
 | 导出 | 点击 **Save PNG** |
 
-<!-- TODO: 截图 — 图像查看器显示 cv::Mat 灰度图像，已应用 jet 伪彩色 -->
+![图像查看器显示 cv::Mat 灰度图像，已应用 jet 伪彩色](../../../assets/usage_images/cv_gray_jet.png)
 
 ### 曲线查看器
 
@@ -199,9 +199,9 @@ make -j$(nproc)
 | 导出 PNG | 点击 **Save PNG** |
 | 导出 CSV | 点击 **Save CSV** |
 
-<!-- TODO: 截图 — 曲线查看器显示 Eigen VectorXd 一维折线图 -->
+![曲线查看器显示 Eigen VectorXd 一维折线图](../../../assets/usage_images/eigen_1d.png)
 
-<!-- TODO: 截图 — 曲线查看器显示 Eigen MatrixXd（Nx2）二维散点图 -->
+![曲线查看器显示 Eigen MatrixXd（Nx2）二维散点图](../../../assets/usage_images/eigen_2d.png)
 
 ### 点云查看器
 
@@ -217,7 +217,7 @@ make -j$(nproc)
 | 调整点大小 | 拖动 **Point Size** 滑块 |
 | 导出 PLY | 点击 **Save PLY** |
 
-<!-- TODO: 截图 — 点云查看器显示 pcl::PointCloud，按 Z 轴着色 -->
+![点云查看器显示 pcl::PointCloud，按 Z 轴着色](../../../assets/usage_images/cpp_pcl.png)
 
 ---
 
@@ -296,7 +296,7 @@ make -j$(nproc)
 
 4. 调试器停在断点处，打开 **MatrixViewer Debug** 面板查看所有已检测到的变量。
 
-<!-- TODO: 截图 — demo.cpp 断点触发，MatrixViewer Debug 面板显示 cv::Mat、Eigen、pcl 变量 -->
+![demo.cpp 断点触发，MatrixViewer Debug 面板显示 cv::Mat、Eigen、pcl 变量](../../../assets/usage_images/quick_start.png)
 
 ---
 

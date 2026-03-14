@@ -63,7 +63,7 @@ npm run compile
 
 > 支持的 Session 类型：`python`、`debugpy`、`jupyter`。
 
-<!-- TODO: 截图 — Python 调试会话已启动，调试器停在断点处 -->
+![Python 调试会话已启动，调试器停在断点处](../../../assets/usage_images/python_debug.png)
 
 ---
 
@@ -73,7 +73,7 @@ npm run compile
 2. 面板列出当前作用域内所有可以可视化的变量。
 3. 每次调试器步进到新行时，列表自动刷新。
 
-<!-- TODO: 截图 — MatrixViewer Debug 变量面板显示已检测到的变量 -->
+![MatrixViewer Debug 变量面板显示已检测到的 Python 变量](../../../assets/usage_images/python_debug.png)
 
 ---
 
@@ -89,7 +89,7 @@ npm run compile
 
 在原生**变量**面板中右键点击变量 → **View by MatrixViewer**。
 
-<!-- TODO: 截图 — 在变量上右键弹出菜单 -->
+![在 Python 变量上右键弹出 View by MatrixViewer 菜单](../../../assets/usage_images/python_click_right.png)
 
 ### 方式三：命令面板
 
@@ -113,7 +113,7 @@ npm run compile
 | 悬停像素信息 | 移动光标查看 `[行, 列] = 值` |
 | 导出 | 点击 **Save PNG** |
 
-<!-- TODO: 截图 — 图像查看器，已应用 jet 伪彩色并显示像素悬停提示 -->
+![图像查看器，已应用 jet 伪彩色并显示像素悬停提示](../../../assets/usage_images/python_show_pixel_info.png)
 
 ### 曲线查看器
 
@@ -130,9 +130,9 @@ npm run compile
 | 导出 PNG | 点击 **Save PNG** |
 | 导出 CSV | 点击 **Save CSV** |
 
-<!-- TODO: 截图 — 曲线查看器显示一维 numpy 数组折线图 -->
+![曲线查看器显示一维 numpy 数组折线图](../../../assets/usage_images/python_numpy_1d.png)
 
-<!-- TODO: 截图 — 曲线查看器显示 Nx2 数组二维散点图 -->
+![曲线查看器显示 Nx2 numpy 数组二维散点图](../../../assets/usage_images/python_numpy_2d.png)
 
 ### 点云查看器
 
@@ -148,7 +148,7 @@ npm run compile
 | 调整点大小 | 拖动 **Point Size** 滑块 |
 | 导出 PLY | 点击 **Save PLY** |
 
-<!-- TODO: 截图 — 点云查看器，按 Z 轴着色 -->
+![点云查看器，按 Z 轴着色](../../../assets/usage_images/python_pcd_by_z.png)
 
 ---
 
@@ -161,7 +161,7 @@ npm run compile
 3. 在一个面板中移动视口，另一个面板自动跟随。
 4. 点击 **Unsync** 解除配对。
 
-<!-- TODO: 截图 — 两个图像查看器并排，已启用视图同步 -->
+![两个图像查看器并排，已启用视图同步](../../../assets/usage_images/python_view_sync.png)
 
 ---
 
@@ -209,4 +209,4 @@ pip install -r requirements.txt
 code .
 ```
 
-<!-- TODO: 截图 — demo.py 断点触发，MatrixViewer Debug 面板已打开 -->
+![demo.py 断点触发，MatrixViewer Debug 面板已打开](../../../assets/usage_images/python_numpy_1d.png)

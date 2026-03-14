@@ -10,11 +10,14 @@
       },
       "problemMatcher": [
         {
+          "owner": "esbuild",
           "pattern": {
-            "regexp": "^\\s*$",
-            "file": 0,
-            "line": 0,
-            "message": 0
+            "regexp": "^(ERROR|WARNING)\\s.*:\\s(.+):(\\d+):(\\d+):\\s(.+)$",
+            "severity": 1,
+            "file": 2,
+            "line": 3,
+            "column": 4,
+            "message": 5
           },
           "background": {
             "activeOnStart": true,

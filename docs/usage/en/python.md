@@ -63,7 +63,7 @@ npm run compile
 
 > Supported session types: `python`, `debugpy`, `jupyter`.
 
-<!-- TODO: screenshot — Starting a Python debug session (breakpoint hit) -->
+![Starting a Python debug session with the debugger paused at a breakpoint](../../../assets/usage_images/python_debug.png)
 
 ---
 
@@ -73,7 +73,7 @@ npm run compile
 2. The panel lists all variables in the current scope that can be visualized.
 3. The list refreshes automatically whenever the debugger steps to a new line.
 
-<!-- TODO: screenshot — MatrixViewer Debug Variables panel showing detected variables -->
+![MatrixViewer Debug Variables panel showing detected Python variables](../../../assets/usage_images/python_debug.png)
 
 ---
 
@@ -90,7 +90,7 @@ A webview opens with the appropriate viewer (Image / Plot / Point Cloud).
 
 Right-click a variable in the native **Variables** pane → **View by MatrixViewer**.
 
-<!-- TODO: screenshot — Right-click context menu on a variable -->
+![Right-click context menu on a Python variable showing View by MatrixViewer](../../../assets/usage_images/python_click_right.png)
 
 ### Option 3 — Command Palette
 
@@ -114,7 +114,7 @@ Renders `PIL.Image`, `numpy` 2D/3D arrays, `torch.Tensor` image tensors, and `cv
 | Hover pixel info | Move cursor over the image to see `[row, col] = value` |
 | Export | Click **Save PNG** |
 
-<!-- TODO: screenshot — Image Viewer with colormap applied and pixel info tooltip -->
+![Image Viewer with jet colormap applied and pixel info tooltip](../../../assets/usage_images/python_show_pixel_info.png)
 
 ### Plot Viewer
 
@@ -131,9 +131,9 @@ Renders 1D line charts, 2D scatter charts, and histograms using uPlot.
 | Export PNG | Click **Save PNG** |
 | Export CSV | Click **Save CSV** |
 
-<!-- TODO: screenshot — Plot Viewer showing a 1D numpy array as a line chart -->
+![Plot Viewer showing a 1D numpy array as a line chart](../../../assets/usage_images/python_numpy_1d.png)
 
-<!-- TODO: screenshot — Plot Viewer showing an Nx2 array as a 2D scatter chart -->
+![Plot Viewer showing an Nx2 numpy array as a 2D scatter chart](../../../assets/usage_images/python_numpy_2d.png)
 
 ### Point Cloud Viewer
 
@@ -149,7 +149,7 @@ Renders 3D point clouds using Three.js + OrbitControls.
 | Adjust point size | Use the **Point Size** slider |
 | Export PLY | Click **Save PLY** |
 
-<!-- TODO: screenshot — Point Cloud Viewer with color-by-Z enabled -->
+![Point Cloud Viewer with color-by-Z enabled](../../../assets/usage_images/python_pcd_by_z.png)
 
 ---
 
@@ -162,7 +162,7 @@ Two open viewer panels can be paired so their viewport (zoom / pan / rotation) s
 3. Moving the viewport in one panel mirrors the movement in the other.
 4. Click **Unsync** to break the pair.
 
-<!-- TODO: screenshot — Two Image Viewers side-by-side with View Sync enabled -->
+![Two Image Viewers side-by-side with View Sync enabled](../../../assets/usage_images/python_view_sync.png)
 
 ---
 
@@ -210,4 +210,4 @@ pip install -r requirements.txt
 code .
 ```
 
-<!-- TODO: screenshot — demo.py breakpoint hit with MatrixViewer Debug panel open -->
+![demo.py breakpoint hit with MatrixViewer Debug panel open](../../../assets/usage_images/python_numpy_1d.png)

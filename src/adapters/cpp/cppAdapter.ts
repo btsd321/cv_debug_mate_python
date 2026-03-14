@@ -70,9 +70,21 @@ export class CppAdapter implements IDebugAdapter {
         prop: "rows" | "cols",
         frameId?: number
     ): Promise<number> {
+        // m_rows / m_cols are Eigen's internal DenseStorage members — accessible
+        // even when LLDB cannot call C++ member functions.
+        const internalProp = prop === "rows" ? "m_rows" : "m_cols";
         const exprs = isUsingLLDB(session)
-            ? [`${varName}.${prop}()`]
-            : [`(int)${varName}.${prop}()`, `${varName}.${prop}()`];
+            ? [
+                `${varName}.${prop}()`,
+                `(long long)${varName}.${prop}()`,
+                `${varName}.m_storage.${internalProp}`,
+                `(long long)${varName}.m_storage.${internalProp}`,
+            ]
+            : [
+                `(int)${varName}.${prop}()`,
+                `${varName}.${prop}()`,
+                `(long long)${varName}.${prop}()`,
+            ];
         for (const expr of exprs) {
             const res = await evaluateExpression(session, expr, frameId);
             const n = parseInt(res ?? "");
@@ -126,8 +138,9 @@ export class CppAdapter implements IDebugAdapter {
     async fetchPointCloudData(
         session: vscode.DebugSession,
         varName: string,
-        info: VariableInfo
+        info: VariableInfo,
+        log?: (level: "DEBUG" | "INFO" | "WARN" | "ERROR", msg: string) => void
     ): Promise<PointCloudData | null> {
-        return fetchCppPointCloudData(session, varName, info);
+        return fetchCppPointCloudData(session, varName, info, log);
     }
 }

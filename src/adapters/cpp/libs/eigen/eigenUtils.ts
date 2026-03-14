@@ -57,8 +57,16 @@ export async function evalEigenDim(
     prop: "rows" | "cols",
     frameId?: number
 ): Promise<number> {
+    // m_rows / m_cols are Eigen's internal DenseStorage members — accessible
+    // even when LLDB cannot call C++ member functions.
+    const internalProp = prop === "rows" ? "m_rows" : "m_cols";
     const exprs = isUsingLLDB(session)
-        ? [`${varName}.${prop}()`, `(long long)${varName}.${prop}()`]
+        ? [
+            `${varName}.${prop}()`,
+            `(long long)${varName}.${prop}()`,
+            `${varName}.m_storage.${internalProp}`,
+            `(long long)${varName}.m_storage.${internalProp}`,
+        ]
         : [
             `(int)${varName}.${prop}()`,
             `${varName}.${prop}()`,
@@ -93,6 +101,9 @@ export async function getEigenDataPointer(
             `&${varName}(0)`,
             `&${varName}(0,0)`,
             `&${varName}[0]`,
+            // Eigen internal DenseStorage members — accessible without function calls
+            `${varName}.m_storage.m_data.array`,
+            `${varName}.m_storage.m_data`,
         ]
         : [
             `(long long)${varName}.data()`,
