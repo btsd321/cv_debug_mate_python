@@ -1,16 +1,16 @@
 {
   "name": "matrix-viewer",
   "displayName": "MatrixViewer Debug",
-  "description": "Visualize 1/2/3D Python data structures (numpy, PIL, PyTorch) during debugging",
+  "description": "Visualize 1D/2D/3D data structures during debugging — supports Python (numpy, PIL, PyTorch, cv2) and C++ (cv::Mat, Eigen, PCL, std::vector)",
   "version": "0.1.0",
-  "publisher": "cv-debugmate",
+  "publisher": "btsd321",
   "license": "MIT",
   "engines": {
     "vscode": "^1.93.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/cv_debug_mate_python"
+    "url": "https://github.com/btsd321/matrix_viewer_debug"
   },
   "categories": [
     "Debuggers",
@@ -24,9 +24,15 @@
     "image",
     "debug",
     "visualize",
-    "python"
+    "python",
+    "c++",
+    "cpp",
+    "eigen",
+    "pcl",
+    "point cloud",
+    "matrix"
   ],
-  "icon": "assets/icon_256x256.ico",
+  "icon": "assets/icon_256x256.png",
   "activationEvents": [
     "onDebug",
     "onLanguage:python",
@@ -146,7 +152,13 @@
         "matrixViewer.defaultColormap": {
           "type": "string",
           "default": "gray",
-          "enum": ["gray", "jet", "hot", "viridis", "plasma"],
+          "enum": [
+            "gray",
+            "jet",
+            "hot",
+            "viridis",
+            "plasma"
+          ],
           "description": "Default colormap for single-channel float images"
         }
       }
@@ -174,6 +186,7 @@
     "@typescript-eslint/parser": "^8.10.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
+    "@vscode/vsce": "^3.7.1",
     "esbuild": "^0.24.0",
     "eslint": "^9.13.0",
     "npm-run-all": "^4.1.5",
