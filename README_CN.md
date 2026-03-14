@@ -87,72 +87,21 @@
 
 ## 📖 使用方法
 
-### 方式一：CV DebugMate 面板（推荐）
+### 快速开始
 
-1. 启动 Python 调试会话
-2. 打开 **"运行和调试"** 侧边栏
-3. 找到 **CV DebugMate** 区域
-4. 点击变量名即可可视化
+1. 启动调试会话（Python 或 C++）
+2. 打开**运行和调试**侧边栏（`Ctrl+Shift+D`），找到 **CV DebugMate** 区域
+3. 点击变量名即可打开查看器
 
-### 方式二：右键菜单
+也可以：在原生**变量**面板中右键点击变量 → **View by CV DebugMate**，  
+或使用命令面板（`Ctrl+Shift+P`）→ **CV DebugMate: Visualize Variable**。
 
-在 **变量** 面板中右键点击变量 → **"View by CV DebugMate"**
+### 详细使用文档
 
-### 方式三：命令面板
-
-打开命令面板（`Ctrl+Shift+P`）→ 搜索 **"CV DebugMate: Visualize Variable"**
-
----
-
-## 📷 截图
-
-### 1D 曲线图
-
-<!-- TODO: 补充截图 -->
-
-### 2D 图像
-
-<!-- TODO: 补充截图 -->
-
-### 3D 点云
-
-<!-- TODO: 补充截图 -->
-
-### 变量面板
-
-<!-- TODO: 补充截图 -->
-
----
-
-## 🎮 操作说明
-
-### 图像查看器
-
-| 操作 | 方式 |
-| ------ | --------------- |
-| 缩放 | 滚轮 |
-| 平移 | 拖动 |
-| 重置 | 点击"Reset" |
-| 伪彩色 | 下拉选择器 |
-| 导出 | Save PNG |
-
-### 3D 点云查看器
-
-| 操作 | 方式 |
-| ------ | -------------------- |
-| 旋转 | 拖动 |
-| 缩放 | 滚轮 |
-| 着色 | 按 X/Y/Z 轴切换 |
-| 导出 | Save PLY |
-
-### 曲线查看器
-
-| 操作 | 方式 |
-| ------ | -------------------------- |
-| 缩放 | 框选或滚轮 |
-| 平移 | 拖动 |
-| 模式 | 折线图 / 散点图 / 直方图 |
-| 导出 | Save PNG / CSV |
+| 语言 | English | 中文 |
+|------|---------|------|
+| **Python** | [Python Usage Guide](docs/usage/en/python.md) | [Python 使用指南](docs/usage/zh/python.md) |
+| **C++** | [C++ Usage Guide](docs/usage/en/cpp.md) | [C++ 使用指南](docs/usage/zh/cpp.md) |
 
 ---
 
@@ -179,7 +128,7 @@ npm run compile
 
 - VS Code 1.93.0+
 - **Python 调试**：Python 3.8+、[Python 扩展](https://marketplace.visualstudio.com/items?itemName=ms-python.python)（`ms-python.python`）、debugpy（随 Python 扩展自动安装）
-- **C++ 调试** *（即将支持）*：[C/C++ 扩展](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) 或 [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)
+- **C++ 调试**：[C/C++ 扩展](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) 或 [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)
 - 可选 Python 包：`numpy`、`Pillow`、`torch`——根据需要可视化的类型按需安装
 
 ---

@@ -85,72 +85,21 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 
 ## 📖 Usage
 
-### Option 1: CV DebugMate Panel (Recommended)
+### Quick Start
 
-1. Start a Python debug session
-2. Open **"Run and Debug"** sidebar
-3. Find **CV DebugMate** section
-4. Click a variable name to visualize it
+1. Start a debug session (Python or C++)
+2. Open the **Run and Debug** sidebar (`Ctrl+Shift+D`) → find **CV DebugMate**
+3. Click a variable name to open the viewer
 
-### Option 2: Context Menu
+Alternatively: right-click any variable in the **Variables** pane → **View by CV DebugMate**,  
+or use the Command Palette (`Ctrl+Shift+P`) → **CV DebugMate: Visualize Variable**.
 
-Right-click a variable in the **Variables** pane → **"View by CV DebugMate"**
+### Detailed Usage Guides
 
-### Option 3: Command Palette
-
-Open the Command Palette (`Ctrl+Shift+P`) → search for **"CV DebugMate: Visualize Variable"**
-
----
-
-## 📷 Screenshots
-
-### 1D Plot
-
-<!-- TODO: add screenshot -->
-
-### 2D Image
-
-<!-- TODO: add screenshot -->
-
-### 3D Point Cloud
-
-<!-- TODO: add screenshot -->
-
-### Variables Panel
-
-<!-- TODO: add screenshot -->
-
----
-
-## 🎮 Controls
-
-### Image Viewer
-
-| Action | Control |
-| ------ | --------------- |
-| Zoom | Scroll wheel |
-| Pan | Drag |
-| Reset | Click "Reset" |
-| Colormap | Dropdown selector |
-| Export | Save PNG |
-
-### 3D Point Cloud Viewer
-
-| Action | Control |
-| ------ | -------------------- |
-| Rotate | Drag |
-| Zoom | Scroll wheel |
-| Color | Switch by X/Y/Z axis |
-| Export | Save PLY |
-
-### Plot Viewer
-
-| Action | Control |
-| ------ | -------------------------- |
-| Zoom | Rectangle select or scroll |
-| Pan | Drag |
-| Mode | Line / Scatter / Histogram |
-| Export | Save PNG / CSV |
+| Language | English | 中文 |
+|----------|---------|------|
+| **Python** | [Python Usage Guide](docs/usage/en/python.md) | [Python 使用指南](docs/usage/zh/python.md) |
+| **C++** | [C++ Usage Guide](docs/usage/en/cpp.md) | [C++ 使用指南](docs/usage/zh/cpp.md) |
 
 ---
 
@@ -177,7 +126,7 @@ npm run compile
 
 - VS Code 1.93.0+
 - **Python debugging**: Python 3.8+, [Python extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python) (`ms-python.python`), debugpy (installed automatically with the Python extension)
-- **C++ debugging** *(coming soon)*: [C/C++ extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) or [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)
+- **C++ debugging**: [C/C++ extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) or [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)
 - Optional Python packages: `numpy`, `Pillow`, `torch` — depending on the types you want to visualize
 
 ---
