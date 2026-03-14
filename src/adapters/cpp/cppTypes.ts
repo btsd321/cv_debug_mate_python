@@ -18,8 +18,8 @@ import { VisualizableKind } from "../IDebugAdapter";
 const IMAGE_TYPE_PATTERNS = [
     /\bcv::Mat\b/i,
     /\bcv2::Mat\b/i,
-    /\bEigen::Matrix\b/,   // 2D matrix — refined in Layer 2 once shape known
-    /\bEigen::Array\b/,    // 2D array — same
+    /\bEigen::Matrix/,   // matches MatrixXd, MatrixXf, Matrix<...>
+    /\bEigen::Array/,    // matches ArrayXXd, Array<...>
     // Nested std::array (2D or 3D image): std::array<std::array<...>>
     /std::(?:__1::)?array\s*<\s*(?:class\s+)?std::(?:__1::)?array/,
     // C-style 2D/3D array: T[H][W] or T[H][W][C]

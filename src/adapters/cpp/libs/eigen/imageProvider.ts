@@ -31,7 +31,7 @@ import { eigenDtype, bytesPerEigenDtype, evalEigenDim, getEigenDataPointer } fro
 export class EigenImageProvider implements ILibImageProvider {
     canHandle(typeName: string): boolean {
         // Handle 2D Matrix / Array types only (not Vector / RowVector — those go to plot).
-        return /\bEigen::(Matrix|Array)\b/.test(typeName);
+        return /\bEigen::(Matrix|Array)/.test(typeName);
     }
 
     async fetchImageData(
