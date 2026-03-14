@@ -8,7 +8,7 @@
 
 [English](README.md) | [中文](README_CN.md)
 
-A Visual Studio Code extension for visualizing 1D/2D/3D data structures during debugging. Supports **Python** (debugpy) today; **C++** (cppdbg / lldb) support is in development.
+A Visual Studio Code extension for visualizing 1D/2D/3D data structures during debugging. Supports **Python** (debugpy) and **C++** (cppdbg / lldb).
 
 **Inspired by [cv_debug_mate_cpp](https://github.com/dull-bird/cv_debug_mate_cpp) and [Image Watch](https://marketplace.visualstudio.com/items?itemName=VisualCPPTeam.ImageWatch2022) for Visual Studio.**
 
@@ -77,7 +77,7 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 | --------- | ------------ | ------- | ----- | ----------- | ------ |
 | debugpy | `python` / `debugpy` | ✅ | ✅ | ✅ | **Supported** |
 | Jupyter | `jupyter` | ✅ | ✅ | ✅ | **Supported** |
-| cppdbg / lldb | `cppdbg` / `lldb` | 🔧 | 🔧 | 🔧 | **In development** |
+| cppdbg / lldb | `cppdbg` / `lldb` | ✅ | ✅ | ✅ | **Supported** |
 
 > Python support requires the [Python extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python) (`ms-python.python`) or a compatible debugpy launch config.
 

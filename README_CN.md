@@ -8,7 +8,7 @@
 
 [English](README.md) | 中文
 
-一个在调试过程中可视化 1/2/3D 数据结构的 VS Code 扩展。目前支持 **Python**（debugpy）；**C++**（cppdbg / lldb）支持正在开发中。
+一个在调试过程中可视化 1/2/3D 数据结构的 VS Code 扩展。支持 **Python**（debugpy）和 **C++**（cppdbg / lldb）。
 
 **灵感来源于 [cv_debug_mate_cpp](https://github.com/dull-bird/cv_debug_mate_cpp) 以及 Visual Studio 的 [Image Watch](https://marketplace.visualstudio.com/items?itemName=VisualCPPTeam.ImageWatch2022) 插件。**
 
@@ -79,7 +79,7 @@
 | --------- | ------------ | ------- | ----- | ----------- | ------ |
 | debugpy | `python` / `debugpy` | ✅ | ✅ | ✅ | **已支持** |
 | Jupyter | `jupyter` | ✅ | ✅ | ✅ | **已支持** |
-| cppdbg / lldb | `cppdbg` / `lldb` | 🔧 | 🔧 | 🔧 | **开发中** |
+| cppdbg / lldb | `cppdbg` / `lldb` | ✅ | ✅ | ✅ | **已支持** |
 
 > Python 支持需要安装 [Python 扩展](https://marketplace.visualstudio.com/items?itemName=ms-python.python)（`ms-python.python`）或兼容 debugpy 的启动配置。
 
