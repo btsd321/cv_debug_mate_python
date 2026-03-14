@@ -83,8 +83,9 @@ target_link_libraries(demo PRIVATE ${EXTRA_LIBS})
 
 # ── Compiler-specific flags ───────────────────────────────────────────────
 if(MSVC)
-    # /Zi  — full PDB debug info
-    # /Od  — disable optimisations
+    # /utf-8 — source and execution charset UTF-8
+    # /Zi   — full PDB debug info
+    # /Od   — disable optimisations
     # /RTC1 — runtime checks (Debug only)
     target_compile_options(demo PRIVATE /utf-8 /Zi /Od /RTC1 /W4)
     # Ensure PDB is written even in Debug

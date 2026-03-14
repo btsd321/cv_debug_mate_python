@@ -10,7 +10,7 @@
             "cwd": "${workspaceFolder}",
             "stopAtEntry": false,
             "environment": [],
-            "console": "integratedTerminal"
+            "console": "internalConsole"
         },
         {
             "name": "C++ Demo (GCC / cppdbg + gdb)",
@@ -42,12 +42,13 @@
         },
         {
             "name": "C++ Demo (LLVM / CodeLLDB)",
-            "type": "lldb",
+            "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build_llvm/demo",
             "args": [],
             "cwd": "${workspaceFolder}",
-            "stopOnEntry": false
+            "stopAtEntry": false,
+            "MIMode": "lldb"
         }
     ]
 }

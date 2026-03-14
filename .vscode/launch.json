@@ -13,22 +13,14 @@
       "preLaunchTask": "${defaultBuildTask}"
     },
     {
-      "name": "Run Extension",
-      "type": "extensionHost",
-      "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-      "preLaunchTask": "${defaultBuildTask}"
-    },
-    {
-      "name": "Extension Tests",
+      "name": "Run Extension (open test_cpp)",
       "type": "extensionHost",
       "request": "launch",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}",
-        "--extensionTestsPath=${workspaceFolder}/out/test/suite/index"
+        "${workspaceFolder}/test/test_cpp"
       ],
-      "outFiles": ["${workspaceFolder}/out/test/**/*.js"],
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
       "preLaunchTask": "${defaultBuildTask}"
     }
   ]
