@@ -14,8 +14,8 @@ import {
 } from "../adapters/python/pythonTypes";
 
 suite("basicTypeDetect", () => {
-    test("numpy.ndarray → image", () => {
-        assert.strictEqual(basicTypeDetect("numpy.ndarray"), "image");
+    test("numpy.ndarray → plot (Layer-1 hint; Layer-2 refines by shape)", () => {
+        assert.strictEqual(basicTypeDetect("numpy.ndarray"), "plot");
     });
     test("PIL.Image.Image → image", () => {
         assert.strictEqual(basicTypeDetect("PIL.Image.Image"), "image");
