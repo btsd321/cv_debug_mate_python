@@ -24,26 +24,26 @@ import { BuiltinsPlotProvider } from "./libs/builtins/plotProvider";
 // ── Registry ───────────────────────────────────────────────────────────────
 
 const LIB_PLOT_PROVIDERS: ILibPlotProvider[] = [
-  new NumpyPlotProvider(),
-  new TorchPlotProvider(),
-  new BuiltinsPlotProvider(),   // must be last — handles list/tuple/range
+    new NumpyPlotProvider(),
+    new TorchPlotProvider(),
+    new BuiltinsPlotProvider(),   // must be last — handles list/tuple/range
 ];
 
 // ── Coordinator ────────────────────────────────────────────────────────────
 
 export class PlotProvider {
-  constructor(private readonly session: vscode.DebugSession) {}
+    constructor(private readonly session: vscode.DebugSession) { }
 
-  async fetchPlotData(
-    varName: string,
-    info: VariableInfo
-  ): Promise<PlotData | null> {
-    const typeName = info.typeName ?? "";
-    for (const provider of LIB_PLOT_PROVIDERS) {
-      if (provider.canHandle(typeName)) {
-        return provider.fetchPlotData(this.session, varName, info);
-      }
+    async fetchPlotData(
+        varName: string,
+        info: VariableInfo
+    ): Promise<PlotData | null> {
+        const typeName = info.typeName ?? "";
+        for (const provider of LIB_PLOT_PROVIDERS) {
+            if (provider.canHandle(typeName)) {
+                return provider.fetchPlotData(this.session, varName, info);
+            }
+        }
+        return null;
     }
-    return null;
-  }
 }

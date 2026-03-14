@@ -20,39 +20,39 @@ import { ImageData, PlotData, PointCloudData } from "../viewers/viewerTypes";
 // ── Image ──────────────────────────────────────────────────────────────────
 
 export interface ILibImageProvider {
-  /**
-   * Return true if this provider can produce ImageData from a variable
-   * whose type string is `typeName`.
-   */
-  canHandle(typeName: string): boolean;
+    /**
+     * Return true if this provider can produce ImageData from a variable
+     * whose type string is `typeName`.
+     */
+    canHandle(typeName: string): boolean;
 
-  fetchImageData(
-    session: vscode.DebugSession,
-    varName: string,
-    info: VariableInfo
-  ): Promise<ImageData | null>;
+    fetchImageData(
+        session: vscode.DebugSession,
+        varName: string,
+        info: VariableInfo
+    ): Promise<ImageData | null>;
 }
 
 // ── Plot ───────────────────────────────────────────────────────────────────
 
 export interface ILibPlotProvider {
-  canHandle(typeName: string): boolean;
+    canHandle(typeName: string): boolean;
 
-  fetchPlotData(
-    session: vscode.DebugSession,
-    varName: string,
-    info: VariableInfo
-  ): Promise<PlotData | null>;
+    fetchPlotData(
+        session: vscode.DebugSession,
+        varName: string,
+        info: VariableInfo
+    ): Promise<PlotData | null>;
 }
 
 // ── Point Cloud ────────────────────────────────────────────────────────────
 
 export interface ILibPointCloudProvider {
-  canHandle(typeName: string): boolean;
+    canHandle(typeName: string): boolean;
 
-  fetchPointCloudData(
-    session: vscode.DebugSession,
-    varName: string,
-    info: VariableInfo
-  ): Promise<PointCloudData | null>;
+    fetchPointCloudData(
+        session: vscode.DebugSession,
+        varName: string,
+        info: VariableInfo
+    ): Promise<PointCloudData | null>;
 }

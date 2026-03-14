@@ -24,65 +24,65 @@ import { fetchCppPlotData } from "./plotProvider";
 import { fetchCppPointCloudData } from "./pointCloudProvider";
 
 export class CppAdapter implements IDebugAdapter {
-  isSupportedSession(session: vscode.DebugSession): boolean {
-    return (
-      session.type === "cppdbg" ||
-      session.type === "lldb" ||
-      session.type === "cppvsdbg"
-    );
-  }
+    isSupportedSession(session: vscode.DebugSession): boolean {
+        return (
+            session.type === "cppdbg" ||
+            session.type === "lldb" ||
+            session.type === "cppvsdbg"
+        );
+    }
 
-  // ── Variable enumeration ──────────────────────────────────────────────
+    // ── Variable enumeration ──────────────────────────────────────────────
 
-  async getVariablesInScope(
-    session: vscode.DebugSession
-  ): Promise<VariableInfo[]> {
-    return getVariablesInScope(session);
-  }
+    async getVariablesInScope(
+        session: vscode.DebugSession
+    ): Promise<VariableInfo[]> {
+        return getVariablesInScope(session);
+    }
 
-  async getVariableInfo(
-    _session: vscode.DebugSession,
-    varName: string,
-    frameId?: number
-  ): Promise<VariableInfo | null> {
-    // Returns a minimal VariableInfo; providers extract shape/dtype internally.
-    // Full shape resolution (rows, cols, dtype) is deferred to each lib provider.
-    return { name: varName, type: "", frameId };
-  }
+    async getVariableInfo(
+        _session: vscode.DebugSession,
+        varName: string,
+        frameId?: number
+    ): Promise<VariableInfo | null> {
+        // Returns a minimal VariableInfo; providers extract shape/dtype internally.
+        // Full shape resolution (rows, cols, dtype) is deferred to each lib provider.
+        return { name: varName, type: "", frameId };
+    }
 
-  // ── Type detection ────────────────────────────────────────────────────
+    // ── Type detection ────────────────────────────────────────────────────
 
-  basicTypeDetect(typeStr: string): VisualizableKind {
-    return basicTypeDetect(typeStr);
-  }
+    basicTypeDetect(typeStr: string): VisualizableKind {
+        return basicTypeDetect(typeStr);
+    }
 
-  detectVisualizableType(info: VariableInfo): VisualizableKind {
-    return basicTypeDetect(info.typeName ?? info.type);
-  }
+    detectVisualizableType(info: VariableInfo): VisualizableKind {
+        return basicTypeDetect(info.typeName ?? info.type);
+    }
 
-  // ── Data fetching ─────────────────────────────────────────────────────
+    // ── Data fetching ─────────────────────────────────────────────────────
 
-  async fetchImageData(
-    session: vscode.DebugSession,
-    varName: string,
-    info: VariableInfo
-  ): Promise<ImageData | null> {
-    return fetchCppImageData(session, varName, info);
-  }
+    async fetchImageData(
+        session: vscode.DebugSession,
+        varName: string,
+        info: VariableInfo
+    ): Promise<ImageData | null> {
+        return fetchCppImageData(session, varName, info);
+    }
 
-  async fetchPlotData(
-    session: vscode.DebugSession,
-    varName: string,
-    info: VariableInfo
-  ): Promise<PlotData | null> {
-    return fetchCppPlotData(session, varName, info);
-  }
+    async fetchPlotData(
+        session: vscode.DebugSession,
+        varName: string,
+        info: VariableInfo
+    ): Promise<PlotData | null> {
+        return fetchCppPlotData(session, varName, info);
+    }
 
-  async fetchPointCloudData(
-    session: vscode.DebugSession,
-    varName: string,
-    info: VariableInfo
-  ): Promise<PointCloudData | null> {
-    return fetchCppPointCloudData(session, varName, info);
-  }
+    async fetchPointCloudData(
+        session: vscode.DebugSession,
+        varName: string,
+        info: VariableInfo
+    ): Promise<PointCloudData | null> {
+        return fetchCppPointCloudData(session, varName, info);
+    }
 }

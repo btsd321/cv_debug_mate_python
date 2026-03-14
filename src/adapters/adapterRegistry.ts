@@ -17,8 +17,8 @@ import { CppAdapter } from "./cpp/cppAdapter";
 // ── Registered adapters (first match wins) ────────────────────────────────
 
 const ADAPTERS: IDebugAdapter[] = [
-  new PythonAdapter(),
-  new CppAdapter(),
+    new PythonAdapter(),
+    new CppAdapter(),
 ];
 
 /**
@@ -26,7 +26,7 @@ const ADAPTERS: IDebugAdapter[] = [
  * of the registered adapters support it.
  */
 export function getAdapter(
-  session: vscode.DebugSession
+    session: vscode.DebugSession
 ): IDebugAdapter | null {
-  return ADAPTERS.find((a) => a.isSupportedSession(session)) ?? null;
+    return ADAPTERS.find((a) => a.isSupportedSession(session)) ?? null;
 }

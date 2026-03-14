@@ -15,19 +15,19 @@ import * as vscode from "vscode";
 import { PointCloudData } from "../viewers/viewerTypes";
 
 export function buildPointCloudWebviewHtml(
-  varName: string,
-  data: PointCloudData,
-  webview: vscode.Webview,
-  context: vscode.ExtensionContext
+    varName: string,
+    data: PointCloudData,
+    webview: vscode.Webview,
+    context: vscode.ExtensionContext
 ): string {
-  const mediaUri = (file: string) =>
-    webview.asWebviewUri(
-      vscode.Uri.joinPath(context.extensionUri, "media", file)
-    );
+    const mediaUri = (file: string) =>
+        webview.asWebviewUri(
+            vscode.Uri.joinPath(context.extensionUri, "media", file)
+        );
 
-  const nonce = generateNonce();
+    const nonce = generateNonce();
 
-  return /* html */ `<!DOCTYPE html>
+    return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -70,9 +70,9 @@ export function buildPointCloudWebviewHtml(
 }
 
 function generateNonce(): string {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  return Array.from({ length: 32 }, () =>
-    chars[Math.floor(Math.random() * chars.length)]
-  ).join("");
+    const chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    return Array.from({ length: 32 }, () =>
+        chars[Math.floor(Math.random() * chars.length)]
+    ).join("");
 }

@@ -24,26 +24,26 @@ import { BuiltinsPointCloudProvider } from "./libs/builtins/pointCloudProvider";
 // ── Registry ───────────────────────────────────────────────────────────────
 
 const LIB_POINTCLOUD_PROVIDERS: ILibPointCloudProvider[] = [
-  new Open3DPointCloudProvider(),     // open3d.geometry.PointCloud — must be before numpy
-  new NumpyPointCloudProvider(),
-  new BuiltinsPointCloudProvider(),   // must be last — handles list/tuple
+    new Open3DPointCloudProvider(),     // open3d.geometry.PointCloud — must be before numpy
+    new NumpyPointCloudProvider(),
+    new BuiltinsPointCloudProvider(),   // must be last — handles list/tuple
 ];
 
 // ── Coordinator ────────────────────────────────────────────────────────────
 
 export class PointCloudProvider {
-  constructor(private readonly session: vscode.DebugSession) {}
+    constructor(private readonly session: vscode.DebugSession) { }
 
-  async fetchPointCloudData(
-    varName: string,
-    info: VariableInfo
-  ): Promise<PointCloudData | null> {
-    const typeName = info.typeName ?? "";
-    for (const provider of LIB_POINTCLOUD_PROVIDERS) {
-      if (provider.canHandle(typeName)) {
-        return provider.fetchPointCloudData(this.session, varName, info);
-      }
+    async fetchPointCloudData(
+        varName: string,
+        info: VariableInfo
+    ): Promise<PointCloudData | null> {
+        const typeName = info.typeName ?? "";
+        for (const provider of LIB_POINTCLOUD_PROVIDERS) {
+            if (provider.canHandle(typeName)) {
+                return provider.fetchPointCloudData(this.session, varName, info);
+            }
+        }
+        return null;
     }
-    return null;
-  }
 }

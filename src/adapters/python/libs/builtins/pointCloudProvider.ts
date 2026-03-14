@@ -13,41 +13,41 @@ import { evaluateExpression } from "../../pythonDebugger";
 import { computeBounds } from "../utils";
 
 export class BuiltinsPointCloudProvider implements ILibPointCloudProvider {
-  canHandle(typeName: string): boolean {
-    return /^(builtins\.)?(list|tuple)$/i.test(typeName);
-  }
-
-  async fetchPointCloudData(
-    session: vscode.DebugSession,
-    varName: string,
-    info: VariableInfo
-  ): Promise<PointCloudData | null> {
-    const expr =
-      `__import__('json').dumps(` +
-      `[[float(p[0]),float(p[1]),float(p[2])] for p in ${varName}])`;
-
-    const result = await evaluateExpression(session, expr, info.frameId);
-    if (!result) {
-      return null;
+    canHandle(typeName: string): boolean {
+        return /^(builtins\.)?(list|tuple)$/i.test(typeName);
     }
 
-    let points: number[][];
-    try {
-      points = JSON.parse(result.replace(/^'|'$/g, "")) as number[][];
-    } catch {
-      return null;
-    }
+    async fetchPointCloudData(
+        session: vscode.DebugSession,
+        varName: string,
+        info: VariableInfo
+    ): Promise<PointCloudData | null> {
+        const expr =
+            `__import__('json').dumps(` +
+            `[[float(p[0]),float(p[1]),float(p[2])] for p in ${varName}])`;
 
-    if (points.length === 0) {
-      return null;
-    }
+        const result = await evaluateExpression(session, expr, info.frameId);
+        if (!result) {
+            return null;
+        }
 
-    const xyzValues = points.flat();
-    return {
-      xyzValues,
-      pointCount: points.length,
-      bounds: computeBounds(xyzValues),
-      varName,
-    };
-  }
+        let points: number[][];
+        try {
+            points = JSON.parse(result.replace(/^'|'$/g, "")) as number[][];
+        } catch {
+            return null;
+        }
+
+        if (points.length === 0) {
+            return null;
+        }
+
+        const xyzValues = points.flat();
+        return {
+            xyzValues,
+            pointCount: points.length,
+            bounds: computeBounds(xyzValues),
+            varName,
+        };
+    }
 }

@@ -13,50 +13,50 @@
 import { PanelManager } from "./panelManager";
 
 export class SyncManager {
-  /** varName waiting for its partner */
-  private pendingVar: string | null = null;
+    /** varName waiting for its partner */
+    private pendingVar: string | null = null;
 
-  /** Bidirectional map: varName → partnerVarName */
-  private pairs = new Map<string, string>();
+    /** Bidirectional map: varName → partnerVarName */
+    private pairs = new Map<string, string>();
 
-  startPairing(varName: string): void {
-    this.pendingVar = varName;
-  }
-
-  getPendingPair(): string | null {
-    return this.pendingVar;
-  }
-
-  completePairing(varName: string, _panelManager: PanelManager): void {
-    if (!this.pendingVar || this.pendingVar === varName) {
-      this.pendingVar = null;
-      return;
+    startPairing(varName: string): void {
+        this.pendingVar = varName;
     }
-    const a = this.pendingVar;
-    const b = varName;
-    this.pairs.set(a, b);
-    this.pairs.set(b, a);
-    this.pendingVar = null;
-  }
 
-  getPartner(varName: string): string | null {
-    return this.pairs.get(varName) ?? null;
-  }
-
-  unpair(varName: string): void {
-    const partner = this.pairs.get(varName);
-    if (partner) {
-      this.pairs.delete(partner);
+    getPendingPair(): string | null {
+        return this.pendingVar;
     }
-    this.pairs.delete(varName);
-  }
 
-  isPaired(varName: string): boolean {
-    return this.pairs.has(varName);
-  }
+    completePairing(varName: string, _panelManager: PanelManager): void {
+        if (!this.pendingVar || this.pendingVar === varName) {
+            this.pendingVar = null;
+            return;
+        }
+        const a = this.pendingVar;
+        const b = varName;
+        this.pairs.set(a, b);
+        this.pairs.set(b, a);
+        this.pendingVar = null;
+    }
 
-  clear(): void {
-    this.pairs.clear();
-    this.pendingVar = null;
-  }
+    getPartner(varName: string): string | null {
+        return this.pairs.get(varName) ?? null;
+    }
+
+    unpair(varName: string): void {
+        const partner = this.pairs.get(varName);
+        if (partner) {
+            this.pairs.delete(partner);
+        }
+        this.pairs.delete(varName);
+    }
+
+    isPaired(varName: string): boolean {
+        return this.pairs.has(varName);
+    }
+
+    clear(): void {
+        this.pairs.clear();
+        this.pendingVar = null;
+    }
 }

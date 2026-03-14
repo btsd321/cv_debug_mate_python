@@ -17,22 +17,22 @@ import { StdPlotProvider } from "./libs/std/plotProvider";
 // ── Provider registry ─────────────────────────────────────────────────────
 
 const LIB_PLOT_PROVIDERS: ILibPlotProvider[] = [
-  new EigenPlotProvider(),
-  new StdPlotProvider(),
+    new EigenPlotProvider(),
+    new StdPlotProvider(),
 ];
 
 // ── Coordinator ───────────────────────────────────────────────────────────
 
 export async function fetchCppPlotData(
-  session: vscode.DebugSession,
-  varName: string,
-  info: VariableInfo
+    session: vscode.DebugSession,
+    varName: string,
+    info: VariableInfo
 ): Promise<PlotData | null> {
-  const typeName = info.typeName ?? info.type;
-  for (const provider of LIB_PLOT_PROVIDERS) {
-    if (provider.canHandle(typeName)) {
-      return provider.fetchPlotData(session, varName, info);
+    const typeName = info.typeName ?? info.type;
+    for (const provider of LIB_PLOT_PROVIDERS) {
+        if (provider.canHandle(typeName)) {
+            return provider.fetchPlotData(session, varName, info);
+        }
     }
-  }
-  return null;
+    return null;
 }

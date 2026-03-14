@@ -29,26 +29,26 @@ import { OpenCvImageProvider } from "./libs/opencv/imageProvider";
 // Checked in order; the first provider whose canHandle() returns true is used.
 
 const LIB_IMAGE_PROVIDERS: ILibImageProvider[] = [
-  new PilImageProvider(),
-  new TorchImageProvider(),
-  new OpenCvImageProvider(),  // cv2.UMat / cv2.cuda.GpuMat / cv2.Mat
+    new PilImageProvider(),
+    new TorchImageProvider(),
+    new OpenCvImageProvider(),  // cv2.UMat / cv2.cuda.GpuMat / cv2.Mat
 ];
 
 // ── Coordinator ────────────────────────────────────────────────────────────
 
 export class ImageProvider {
-  constructor(private readonly session: vscode.DebugSession) {}
+    constructor(private readonly session: vscode.DebugSession) { }
 
-  async fetchImageData(
-    varName: string,
-    info: VariableInfo
-  ): Promise<ImageData | null> {
-    const typeName = info.typeName ?? "";
-    for (const provider of LIB_IMAGE_PROVIDERS) {
-      if (provider.canHandle(typeName)) {
-        return provider.fetchImageData(this.session, varName, info);
-      }
+    async fetchImageData(
+        varName: string,
+        info: VariableInfo
+    ): Promise<ImageData | null> {
+        const typeName = info.typeName ?? "";
+        for (const provider of LIB_IMAGE_PROVIDERS) {
+            if (provider.canHandle(typeName)) {
+                return provider.fetchImageData(this.session, varName, info);
+            }
+        }
+        return null;
     }
-    return null;
-  }
 }

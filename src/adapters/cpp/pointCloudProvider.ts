@@ -17,22 +17,22 @@ import { StdPointCloudProvider } from "./libs/std/pointCloudProvider";
 // ── Provider registry ─────────────────────────────────────────────────────
 
 const LIB_POINTCLOUD_PROVIDERS: ILibPointCloudProvider[] = [
-  new PclPointCloudProvider(),
-  new StdPointCloudProvider(),
+    new PclPointCloudProvider(),
+    new StdPointCloudProvider(),
 ];
 
 // ── Coordinator ───────────────────────────────────────────────────────────
 
 export async function fetchCppPointCloudData(
-  session: vscode.DebugSession,
-  varName: string,
-  info: VariableInfo
+    session: vscode.DebugSession,
+    varName: string,
+    info: VariableInfo
 ): Promise<PointCloudData | null> {
-  const typeName = info.typeName ?? info.type;
-  for (const provider of LIB_POINTCLOUD_PROVIDERS) {
-    if (provider.canHandle(typeName)) {
-      return provider.fetchPointCloudData(session, varName, info);
+    const typeName = info.typeName ?? info.type;
+    for (const provider of LIB_POINTCLOUD_PROVIDERS) {
+        if (provider.canHandle(typeName)) {
+            return provider.fetchPointCloudData(session, varName, info);
+        }
     }
-  }
-  return null;
+    return null;
 }

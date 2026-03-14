@@ -17,22 +17,22 @@ import { StdImageProvider } from "./libs/std/imageProvider";
 // ── Provider registry ─────────────────────────────────────────────────────
 
 const LIB_IMAGE_PROVIDERS: ILibImageProvider[] = [
-  new OpenCvImageProvider(),
-  new StdImageProvider(),
+    new OpenCvImageProvider(),
+    new StdImageProvider(),
 ];
 
 // ── Coordinator ───────────────────────────────────────────────────────────
 
 export async function fetchCppImageData(
-  session: vscode.DebugSession,
-  varName: string,
-  info: VariableInfo
+    session: vscode.DebugSession,
+    varName: string,
+    info: VariableInfo
 ): Promise<ImageData | null> {
-  const typeName = info.typeName ?? info.type;
-  for (const provider of LIB_IMAGE_PROVIDERS) {
-    if (provider.canHandle(typeName)) {
-      return provider.fetchImageData(session, varName, info);
+    const typeName = info.typeName ?? info.type;
+    for (const provider of LIB_IMAGE_PROVIDERS) {
+        if (provider.canHandle(typeName)) {
+            return provider.fetchImageData(session, varName, info);
+        }
     }
-  }
-  return null;
+    return null;
 }
