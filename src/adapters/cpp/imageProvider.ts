@@ -12,12 +12,14 @@ import { VariableInfo } from "../IDebugAdapter";
 import { ImageData } from "../../viewers/viewerTypes";
 import { ILibImageProvider } from "../ILibProviders";
 import { OpenCvImageProvider } from "./libs/opencv/imageProvider";
+import { EigenImageProvider } from "./libs/eigen/imageProvider";
 import { StdImageProvider } from "./libs/std/imageProvider";
 
 // ── Provider registry ─────────────────────────────────────────────────────
 
 const LIB_IMAGE_PROVIDERS: ILibImageProvider[] = [
     new OpenCvImageProvider(),
+    new EigenImageProvider(),
     new StdImageProvider(),
 ];
 

@@ -128,6 +128,50 @@ export async function getVariablesInScope(
     }
 }
 
+/**
+ * Look up a single variable by name in the current frame's local scope.
+ * Returns a VariableInfo with the real DAP type string, or null if not found.
+ */
+export async function getVariableInfo(
+    session: vscode.DebugSession,
+    varName: string,
+    frameId?: number
+): Promise<VariableInfo | null> {
+    try {
+        const resolvedFrame = frameId ?? (await getCurrentFrameId(session));
+        if (resolvedFrame == null) {
+            return null;
+        }
+
+        const scopesResp = await session.customRequest("scopes", { frameId: resolvedFrame });
+        const localScopeRef: number | undefined = scopesResp?.scopes?.[0]?.variablesReference;
+        if (localScopeRef == null) {
+            return null;
+        }
+
+        const varsResp = await session.customRequest("variables", {
+            variablesReference: localScopeRef,
+        });
+
+        const match = (varsResp?.variables ?? []).find(
+            (v: { name: string }) => v.name === varName
+        );
+        if (!match) {
+            return null;
+        }
+
+        return {
+            name: match.name,
+            type: match.type ?? "",
+            typeName: match.type ?? "",
+            variablesReference: match.variablesReference,
+            frameId: resolvedFrame,
+        };
+    } catch {
+        return null;
+    }
+}
+
 // ── Expression evaluation ─────────────────────────────────────────────────
 
 const EVALUATE_TIMEOUT_MS = 10_000;

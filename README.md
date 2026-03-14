@@ -37,6 +37,7 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 | **Image (2D)** | `PIL.Image.Image` | 🖼️ Image Viewer |
 | | `torch.Tensor` shape `(H, W)` / `(C, H, W)` / `(1, C, H, W)` | 🖼️ Image Viewer |
 | | `cv2.UMat` / `cv2.cuda.GpuMat` | 🖼️ Image Viewer |
+| | `Eigen::Matrix<T,R,C>` / `Eigen::Array<T,R,C>` rows>1, cols>2 | 🖼️ Image Viewer |
 | **Point Cloud (3D)** | `numpy.ndarray` shape `(N, 3)` — XYZ | 📊 3D Viewer |
 | | `numpy.ndarray` shape `(N, 6)` — XYZ + RGB | 📊 3D Viewer |
 | | `open3d.geometry.PointCloud` | 📊 3D Viewer |
@@ -46,8 +47,14 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 | | `list` / `tuple` of numeric values | 📈 1D Chart |
 | | `list` / `tuple` of 2-element seqs | 📈 2D Scatter |
 | | `torch.Tensor` (1D) | 📈 1D Chart |
+| | `Eigen::VectorX*` / `Eigen::RowVectorX*` | 📈 1D Chart |
+| | `Eigen::Matrix<T,N,1>` / `Eigen::Matrix<T,1,N>` | 📈 1D Chart |
+| | `Eigen::Matrix<T,N,2>` (N×2) | 📈 2D Scatter (col0=X, col1=Y) |
 
-> **Unsupported shapes** (e.g. `ndarray` with shape `(H,W,3)`) will show a "不支持的数据结构" warning.
+> **Eigen routing rules**: query runtime `.rows()` / `.cols()` to decide viewer type:
+> - `cols == 1` or `rows == 1` → **1D line plot**
+> - `cols == 2` → **2D scatter** (column-major storage: X = col 0, Y = col 1)
+> - `rows > 1` and `cols > 2` → **image** (grayscale, auto-normalised)
 
 ---
 

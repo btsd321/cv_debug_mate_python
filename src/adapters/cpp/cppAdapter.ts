@@ -18,7 +18,7 @@ import * as vscode from "vscode";
 import { IDebugAdapter, VariableInfo, VisualizableKind } from "../IDebugAdapter";
 import { ImageData, PlotData, PointCloudData } from "../../viewers/viewerTypes";
 import { basicTypeDetect } from "./cppTypes";
-import { getVariablesInScope } from "./cppDebugger";
+import { getVariablesInScope, getVariableInfo, evaluateExpression, isUsingLLDB } from "./cppDebugger";
 import { fetchCppImageData } from "./imageProvider";
 import { fetchCppPlotData } from "./plotProvider";
 import { fetchCppPointCloudData } from "./pointCloudProvider";
@@ -41,13 +41,46 @@ export class CppAdapter implements IDebugAdapter {
     }
 
     async getVariableInfo(
-        _session: vscode.DebugSession,
+        session: vscode.DebugSession,
         varName: string,
         frameId?: number
     ): Promise<VariableInfo | null> {
-        // Returns a minimal VariableInfo; providers extract shape/dtype internally.
-        // Full shape resolution (rows, cols, dtype) is deferred to each lib provider.
-        return { name: varName, type: "", frameId };
+        const info = await getVariableInfo(session, varName, frameId);
+        if (!info) {
+            return null;
+        }
+
+        // For Eigen types, query runtime .rows() / .cols() so Layer-2
+        // detectVisualizableType can distinguish line / scatter / image.
+        if (/Eigen::(Matrix|Array|Vector|RowVector)/i.test(info.type)) {
+            const rows = await this._evalEigenDim(session, varName, "rows", info.frameId);
+            const cols = await this._evalEigenDim(session, varName, "cols", info.frameId);
+            if (rows > 0 && cols > 0) {
+                info.shape = [rows, cols];
+            }
+        }
+
+        return info;
+    }
+
+    /** Evaluate .rows() or .cols() on an Eigen variable; returns 0 on failure. */
+    private async _evalEigenDim(
+        session: vscode.DebugSession,
+        varName: string,
+        prop: "rows" | "cols",
+        frameId?: number
+    ): Promise<number> {
+        const exprs = isUsingLLDB(session)
+            ? [`${varName}.${prop}()`]
+            : [`(int)${varName}.${prop}()`, `${varName}.${prop}()`];
+        for (const expr of exprs) {
+            const res = await evaluateExpression(session, expr, frameId);
+            const n = parseInt(res ?? "");
+            if (!isNaN(n) && n > 0 && n < 100_000_000) {
+                return n;
+            }
+        }
+        return 0;
     }
 
     // ── Type detection ────────────────────────────────────────────────────
@@ -57,7 +90,19 @@ export class CppAdapter implements IDebugAdapter {
     }
 
     detectVisualizableType(info: VariableInfo): VisualizableKind {
-        return basicTypeDetect(info.typeName ?? info.type);
+        const typeStr = info.typeName ?? info.type;
+        const kind = basicTypeDetect(typeStr);
+
+        // Layer-2 refinement for Eigen: use runtime shape to route
+        // image → plot when the matrix is 1D or 2-column (scatter).
+        if (kind === "image" && /Eigen::(Matrix|Array)/i.test(typeStr) && info.shape) {
+            const [rows, cols] = info.shape;
+            if (cols === 1 || rows === 1 || cols === 2) {
+                return "plot";
+            }
+        }
+
+        return kind;
     }
 
     // ── Data fetching ─────────────────────────────────────────────────────

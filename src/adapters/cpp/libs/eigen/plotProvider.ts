@@ -2,20 +2,22 @@
  * eigen/plotProvider.ts — PlotData extraction from Eigen matrices (C++ / cppdbg).
  *
  * Supported types:
- *   - Eigen::VectorXd / VectorXf       → 1D column vector → PlotData
- *   - Eigen::RowVectorXd / RowVectorXf → 1D row vector    → PlotData
- *   - Eigen::MatrixXd / MatrixXf       → flattened (column-major) → PlotData
- *   - Eigen::Array<T,R,C>              → same as Matrix
+ *   - Eigen::VectorXd / VectorXf       → 1D column vector → line plot
+ *   - Eigen::RowVectorXd / RowVectorXf → 1D row vector    → line plot
+ *   - Eigen::MatrixXd rows=N, cols=1   → 1D vector        → line plot
+ *   - Eigen::MatrixXd rows=N, cols=2   → N×2 matrix       → 2D scatter (col0=X, col1=Y)
+ *   - Eigen::MatrixXd rows=1, cols=N   → row vector       → line plot
+ *   - Eigen::Array<T,R,C>              → same rules as Matrix
  *
  * Data-fetch strategy:
  *   1. Evaluate varName.rows() and varName.cols() for dimensions
  *   2. Obtain data pointer via varName.data() (Eigen standard API)
  *   3. Read rows × cols × sizeof(T) bytes via readMemoryChunked
- *   4. Convert to number[] using typed array (column-major; frontend shows flat)
+ *   4a. cols==2: split column-major flat buffer → xValues (col0) + yValues (col1)
+ *   4b. otherwise: flat array → yValues (line plot)
  *
  * Eigen storage:
- *   - Column-major by default (RowMajor flag rarely used in practice)
- *   - data() always returns pointer to first element regardless of order
+ *   - Column-major by default; for N×2:  buffer = [x0,x1,...,xN-1, y0,y1,...,yN-1]
  *   - https://eigen.tuxfamily.org/dox/group__TopicStorageOrders.html
  */
 
@@ -23,106 +25,9 @@ import * as vscode from "vscode";
 import { VariableInfo } from "../../../IDebugAdapter";
 import { PlotData } from "../../../../viewers/viewerTypes";
 import { ILibPlotProvider } from "../../../ILibProviders";
-import {
-    isUsingLLDB,
-    evaluateExpression,
-    readMemoryChunked,
-    tryGetDataPointer,
-} from "../../cppDebugger";
-import { cppTypeToDtype, typedBufferToNumbers, computeStats } from "../utils";
-
-// ── Helpers ───────────────────────────────────────────────────────────────
-
-/**
- * Determine dtype (float32 or float64) from an Eigen type string.
- *
- * Debugger examples:
- *   "Eigen::Matrix<double, -1, -1, 0, -1, -1>"  → float64
- *   "Eigen::Matrix<float, -1, 1, 0, -1, 1>"     → float32
- *   "Eigen::Array<double, 3, 1>"                 → float64
- */
-function eigenDtype(typeStr: string): string {
-    // Prefer explicit template parameter
-    const tplMatch = typeStr.match(
-        /Eigen::(?:Matrix|Array|Vector|RowVector)\s*<\s*([^,>]+)/
-    );
-    if (tplMatch) {
-        const firstParam = tplMatch[1].trim();
-        if (firstParam === "double") {
-            return "float64";
-        }
-        if (firstParam === "float") {
-            return "float32";
-        }
-        return cppTypeToDtype(firstParam);
-    }
-    // Shorthand aliases: VectorXd / MatrixXd → double; VectorXf / MatrixXf → float
-    if (/X[df]$/.test(typeStr)) {
-        return typeStr.endsWith("d") ? "float64" : "float32";
-    }
-    return "float32"; // safe default
-}
-
-function bytesPerDtype(dtype: string): number {
-    if (dtype === "float64") { return 8; }
-    if (dtype === "float32") { return 4; }
-    return 4;
-}
-
-/**
- * Obtain the Eigen data pointer using different evaluation strategies.
- *
- * Eigen::DenseBase::data() is the standard accessor and works for both
- * MatrixX (dynamic) and fixed-size matrices.
- */
-async function getEigenDataPointer(
-    session: vscode.DebugSession,
-    varName: string,
-    frameId?: number
-): Promise<string | null> {
-    const exprs = isUsingLLDB(session)
-        ? [
-            `${varName}.data()`,
-            `&${varName}(0)`,
-            `&${varName}(0,0)`,
-            `&${varName}[0]`,
-        ]
-        : [
-            `(long long)${varName}.data()`,
-            `reinterpret_cast<long long>(${varName}.data())`,
-            `(long long)&${varName}(0)`,
-            `(long long)&${varName}(0,0)`,
-            `(long long)&${varName}[0]`,
-        ];
-    return tryGetDataPointer(session, exprs, frameId);
-}
-
-/**
- * Evaluate an integer property of the Eigen object (.rows() / .cols()).
- * Returns 0 on failure.
- */
-async function evalEigenDim(
-    session: vscode.DebugSession,
-    varName: string,
-    prop: "rows" | "cols",
-    frameId?: number
-): Promise<number> {
-    const exprs = isUsingLLDB(session)
-        ? [`${varName}.${prop}()`, `(long long)${varName}.${prop}()`]
-        : [
-            `(int)${varName}.${prop}()`,
-            `${varName}.${prop}()`,
-            `(long long)${varName}.${prop}()`,
-        ];
-    for (const expr of exprs) {
-        const res = await evaluateExpression(session, expr, frameId);
-        const n = parseInt(res ?? "");
-        if (!isNaN(n) && n > 0 && n < 100_000_000) {
-            return n;
-        }
-    }
-    return 0;
-}
+import { readMemoryChunked } from "../../cppDebugger";
+import { typedBufferToNumbers, computeStats } from "../utils";
+import { eigenDtype, bytesPerEigenDtype, evalEigenDim, getEigenDataPointer } from "./eigenUtils";
 
 // ── Provider ──────────────────────────────────────────────────────────────
 
@@ -149,7 +54,7 @@ export class EigenPlotProvider implements ILibPlotProvider {
 
         const size = rows * cols;
         const dtype = eigenDtype(typeStr);
-        const bpe = bytesPerDtype(dtype);
+        const bpe = bytesPerEigenDtype(dtype);
         const totalBytes = size * bpe;
 
         // ── Step 2: data pointer ──────────────────────────────────────────────
@@ -164,15 +69,30 @@ export class EigenPlotProvider implements ILibPlotProvider {
             return null;
         }
 
-        // ── Step 4: convert to numbers ────────────────────────────────────────
-        // Eigen is column-major by default; the flat array is valid for a 1D plot
-        const yValues = typedBufferToNumbers(buffer, dtype);
-        const stats = computeStats(yValues);
+        // ── Step 4: build PlotData ────────────────────────────────────────────
+        const allValues = typedBufferToNumbers(buffer, dtype);
 
+        // N×2 matrix → 2D scatter: Eigen column-major means
+        // col0 = allValues[0..rows-1], col1 = allValues[rows..2*rows-1]
+        if (cols === 2) {
+            const xValues = allValues.slice(0, rows);
+            const yValues = allValues.slice(rows, rows * 2);
+            return {
+                xValues,
+                yValues,
+                dtype,
+                length: rows,
+                stats: computeStats(yValues),
+                varName,
+            };
+        }
+
+        // 1D (vector or any other shape) → line plot
+        const stats = computeStats(allValues);
         return {
-            yValues,
+            yValues: allValues,
             dtype,
-            length: size,
+            length: allValues.length,
             stats,
             varName,
         };

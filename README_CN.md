@@ -37,6 +37,7 @@
 | **图像（2D）** | `PIL.Image.Image` | 🖼️ 图像查看器 |
 | | `torch.Tensor` shape `(H, W)` / `(C, H, W)` / `(1, C, H, W)` | 🖼️ 图像查看器 |
 | | `cv2.UMat` / `cv2.cuda.GpuMat` | 🖼️ 图像查看器 |
+| | `Eigen::Matrix<T,R,C>` / `Eigen::Array<T,R,C>` rows>1, cols>2 | 🖼️ 图像查看器 |
 | **点云（3D）** | `numpy.ndarray` shape `(N, 3)` — XYZ | 📊 3D 查看器 |
 | | `numpy.ndarray` shape `(N, 6)` — XYZ + RGB | 📊 3D 查看器 |
 | | `open3d.geometry.PointCloud` | 📊 3D 查看器 |
@@ -46,6 +47,14 @@
 | | 元素为数值的 `list` / `tuple` | 📈 1D 折线图 |
 | | 元素为 2 元素序列的 `list` / `tuple` | 📈 2D 散点图 |
 | | `torch.Tensor`（1D）| 📈 1D 折线图 |
+| | `Eigen::VectorX*` / `Eigen::RowVectorX*` | 📈 1D 折线图 |
+| | `Eigen::Matrix<T,N,1>` / `Eigen::Matrix<T,1,N>` | 📈 1D 折线图 |
+| | `Eigen::Matrix<T,N,2>`（N×2 矩阵）| 📈 2D 散点图（列0=X，列1=Y）|
+
+> **Eigen 路由规则**：运行时查询 `.rows()` / `.cols()` 决定可视化类型：
+> - `cols == 1` 或 `rows == 1` → **1D 折线图**
+> - `cols == 2` → **2D 散点图**（列优先存储：X = 第 0 列，Y = 第 1 列）
+> - `rows > 1` 且 `cols > 2` → **图像**（单通道灰度，自动开启归一化）
 
 > **不支持的维度**（如 `ndarray` shape `(H,W,3)`）会弹出「不支持的数据结构」警告。
 

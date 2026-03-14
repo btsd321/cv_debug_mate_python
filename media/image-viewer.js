@@ -50,6 +50,7 @@
   function init() {
     chkNormalize.checked = normalize;
     chkBGR.checked = swapBGR;
+    fitToWindow(currentData);
     renderImage(currentData);
     const fmtStr = currentData.format ? `  ${currentData.format}` : "";
     infoLabel.textContent = `${currentData.height}×${currentData.width}  ch:${currentData.channels}  ${currentData.dtype}${fmtStr}`;
@@ -88,8 +89,12 @@
   function renderImage(data) {
     const { width, height, channels, dtype, b64Bytes, dataMin, dataMax } = data;
 
-    canvas.width = width;
-    canvas.height = height;
+    // Size the canvas to the container so zoom/pan work in the full viewport
+    const container = canvas.parentElement;
+    const cw = container.clientWidth  || width;
+    const ch = container.clientHeight || height;
+    canvas.width  = cw;
+    canvas.height = ch;
 
     // Decode Base64 bytes
     const binaryStr = atob(b64Bytes);
@@ -198,10 +203,18 @@
     }
   }
 
+  /** Fit the image to the container and centre it. */
+  function fitToWindow(data) {
+    const container = canvas.parentElement;
+    const cw = container.clientWidth  || data.width;
+    const ch = container.clientHeight || data.height;
+    zoom = Math.min(cw / data.width, ch / data.height);
+    panX = (cw - data.width  * zoom) / 2;
+    panY = (ch - data.height * zoom) / 2;
+  }
+
   function resetView() {
-    zoom = 1;
-    panX = 0;
-    panY = 0;
+    fitToWindow(currentData);
     renderImage(currentData);
   }
 

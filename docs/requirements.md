@@ -10,9 +10,9 @@
 
 | 功能模块 | C++ 版 | Python 版对应 |
 |---------|--------|--------------|
-| **1D 曲线图** | `std::vector<T>`, `std::array<T,N>`, `T[N]`, `std::set<T>` | `list`, `tuple`, `np.ndarray` (1D), `array.array` |
-| **2D 散点图** | — | `np.ndarray` (N,2), `list` of 2-tuples |
-| **2D 图像** | `cv::Mat`, `T[H][W]`, `std::array<std::array<T>>` | `PIL.Image`, `torch.Tensor` (2D/3D/4D), `cv2.UMat`/`GpuMat` |
+| **1D 曲线图** | `std::vector<T>`, `std::array<T,N>`, `T[N]`, `std::set<T>`, `Eigen::VectorX*`, `Eigen::Matrix<T,N,1>` | `list`, `tuple`, `np.ndarray` (1D), `array.array` |
+| **2D 散点图** | `Eigen::Matrix<T,N,2>` (N×2，列0=X，列1=Y) | `np.ndarray` (N,2), `list` of 2-tuples |
+| **2D 图像** | `cv::Mat`, `T[H][W]`, `std::array<std::array<T>>`, `Eigen::Matrix<T,R,C>` (rows>1, cols>2) | `PIL.Image`, `torch.Tensor` (2D/3D/4D), `cv2.UMat`/`GpuMat` |
 | **3D 点云** | `std::vector<cv::Point3f>` | `np.ndarray` (N,3/6), `list` of 3-tuples, `open3d.geometry.PointCloud` |
 | **变量面板** | TreeView 自动检测当前作用域变量 | TreeView 自动检测当前作用域变量 |
 | **视图同步** | 配对变量联动缩放/平移 | 配对变量联动缩放/平移 |
@@ -31,6 +31,7 @@
 | `torch.Tensor` shape `(C, H, W)` 或 `(H, W, C)` | 多通道图（需 detach/cpu） | 已实现 |
 | `cv2.UMat` | OpenCV UMat（CPU 透明 API） | 已实现 |
 | `cv2.cuda.GpuMat` | OpenCV GPU 矩阵 | 已实现 |
+| `Eigen::Matrix<T,R,C>` / `Eigen::Array<T,R,C>` (rows>1, cols>2) | 单通道灰度图（自动开启归一化） | 已实现 |
 
 > **注意**：`numpy.ndarray` 不再作为图像类型直接可视化。  
 > 如需将 numpy 图像数据可视化，请使用 `PIL.Image.fromarray()` 或 `cv2.UMat()` 包装。
@@ -46,6 +47,17 @@
 | `array.array` | 1D 折线图 | 已实现 |
 | `torch.Tensor` shape `(N,)` | 1D 折线图 | 已实现 |
 | `range` | 1D 折线图 | 已实现 |
+| `Eigen::VectorX*` / `Eigen::RowVectorX*` | 1D 折线图 | 已实现 |
+| `Eigen::Matrix<T,N,1>` 或 `Eigen::Matrix<T,1,N>` | 1D 折线图 | 已实现 |
+| `Eigen::Matrix<T,N,2>` (N×2，列0=X，列1=Y) | 2D 散点图 | 已实现 |
+
+> **Eigen 路由规则**（Layer-2 运行时检测，查询 `.rows()` / `.cols()`）：
+>
+> | 条件 | 可视化类型 |
+> |------|----------|
+> | `cols == 1` 或 `rows == 1` | 1D 折线图 |
+> | `cols == 2` | 2D 散点图（Eigen 列优先存储：X = 第0列，Y = 第1列）|
+> | `rows > 1` 且 `cols > 2` | 图像（单通道灰度，自动归一化）|
 
 ### 2.3 点云类型（3D Point Cloud Viewer）
 
@@ -327,6 +339,9 @@ Webview 渲染
 - [x] 2D/3D `std::array` 和 C-style array 图像数据获取（通过 `libs/std/imageProvider.ts`）
 - [x] `std::vector<cv::Point3f/d>` / `std::array<cv::Point3f/d,N>` 点云数据获取（通过 `libs/std/pointCloudProvider.ts`）
 - [x] `Eigen::Matrix` / `Eigen::Array` / `Eigen::VectorX` 曲线数据获取（`libs/eigen/plotProvider.ts`）
+  - `cols==1` 或 `rows==1` → 1D 折线图
+  - `cols==2` → 2D 散点图（Eigen 列优先：X=col0, Y=col1）
+- [x] `Eigen::Matrix` / `Eigen::Array` (rows>1, cols>2) 图像数据获取（`libs/eigen/imageProvider.ts`）
 - [x] `pcl::PointCloud<PointXYZ/XYZRGB/XYZRGBA/XYZI>` 点云数据获取（`libs/pcl/pointCloudProvider.ts`）
 
 ---
