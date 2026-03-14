@@ -26,4 +26,4 @@ cmake -S "${SOURCE_DIR}" -B "${BUILD_DIR}" \
 echo "[build_gcc] Building..."
 cmake --build "${BUILD_DIR}" --parallel "$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 4)"
 
-echo "[build_gcc] SUCCESS  →  ${BUILD_DIR}/demo"
+echo "[build_gcc] SUCCESS : ${BUILD_DIR}/demo"
