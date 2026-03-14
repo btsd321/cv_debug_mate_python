@@ -1,4 +1,4 @@
-# Matrix Viewer Debug
+﻿# Matrix Viewer Debug
 
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.93%2B-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
 [![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdull-bird%2Fcv_debug_mate_python%2Fmain%2Fpackage.json&query=%24.version&label=version&color=blue)](https://github.com/dull-bird/cv_debug_mate_python)
@@ -19,7 +19,7 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 > **📂 Example Project: [`test/test_python/`](test/test_python/)**
 >
 > Complete demo with ALL supported types!
-> Run with the debugger to see CV DebugMate in action.
+> Run with the debugger to see MatrixViewer Debug in action.
 >
 > ```bash
 > cd test/test_python
@@ -88,11 +88,11 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 ### Quick Start
 
 1. Start a debug session (Python or C++)
-2. Open the **Run and Debug** sidebar (`Ctrl+Shift+D`) → find **CV DebugMate**
+2. Open the **Run and Debug** sidebar (`Ctrl+Shift+D`) → find **MatrixViewer Debug**
 3. Click a variable name to open the viewer
 
-Alternatively: right-click any variable in the **Variables** pane → **View by CV DebugMate**,  
-or use the Command Palette (`Ctrl+Shift+P`) → **CV DebugMate: Visualize Variable**.
+Alternatively: right-click any variable in the **Variables** pane → **View by MatrixViewer**,  
+or use the Command Palette (`Ctrl+Shift+P`) → **MatrixViewer: View by MatrixViewer**.
 
 ### Detailed Usage Guides
 

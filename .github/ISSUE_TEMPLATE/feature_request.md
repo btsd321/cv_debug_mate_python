@@ -1,6 +1,6 @@
----
+﻿---
 name: Feature Request
-about: Suggest a new type or feature for CV DebugMate Python
+about: Suggest a new type or feature for MatrixViewer Debug
 title: "[Feature] "
 labels: enhancement
 assignees: ''

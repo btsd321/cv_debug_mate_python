@@ -1,7 +1,7 @@
-"""
+﻿"""
 Matrix Viewer Debug — Python Demo Script
 ==========================================
-Run with F5 (launch config: "CV DebugMate: Run demo.py") to interactively test
+Run with F5 (launch config: "Matrix Viewer: Run demo.py") to interactively test
 every supported variable type.
 
 Set a breakpoint on the ``breakpoint()`` call.  In the "Matrix Viewer" panel in

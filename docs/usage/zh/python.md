@@ -1,4 +1,4 @@
-# Python 使用指南 — Matrix Viewer Debug
+﻿# Python 使用指南 — Matrix Viewer Debug
 
 [English](../../en/python.md) | 中文
 
@@ -69,11 +69,11 @@ npm run compile
 
 ## 打开变量面板
 
-1. 在**运行和调试**侧边栏（`Ctrl+Shift+D`）中向下滚动，找到 **CV DebugMate** 区域。
+1. 在**运行和调试**侧边栏（`Ctrl+Shift+D`）中向下滚动，找到 **MatrixViewer Debug** 区域。
 2. 面板列出当前作用域内所有可以可视化的变量。
 3. 每次调试器步进到新行时，列表自动刷新。
 
-<!-- TODO: 截图 — CV DebugMate 变量面板显示已检测到的变量 -->
+<!-- TODO: 截图 — MatrixViewer Debug 变量面板显示已检测到的变量 -->
 
 ---
 
@@ -81,19 +81,19 @@ npm run compile
 
 有三种方式打开变量的查看器：
 
-### 方式一：CV DebugMate 面板（推荐）
+### 方式一：MatrixViewer Debug 面板（推荐）
 
-点击 **CV DebugMate** 面板中的任意变量名，即可打开对应查看器（图像 / 曲线 / 点云）。
+点击 **MatrixViewer Debug** 面板中的任意变量名，即可打开对应查看器（图像 / 曲线 / 点云）。
 
 ### 方式二：右键菜单
 
-在原生**变量**面板中右键点击变量 → **View by CV DebugMate**。
+在原生**变量**面板中右键点击变量 → **View by MatrixViewer**。
 
 <!-- TODO: 截图 — 在变量上右键弹出菜单 -->
 
 ### 方式三：命令面板
 
-`Ctrl+Shift+P` → **CV DebugMate: Visualize Variable** → 输入变量名。
+`Ctrl+Shift+P` → **MatrixViewer: View by MatrixViewer** → 输入变量名。
 
 ---
 
@@ -209,4 +209,4 @@ pip install -r requirements.txt
 code .
 ```
 
-<!-- TODO: 截图 — demo.py 断点触发，CV DebugMate 面板已打开 -->
+<!-- TODO: 截图 — demo.py 断点触发，MatrixViewer Debug 面板已打开 -->

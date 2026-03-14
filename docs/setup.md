@@ -1,4 +1,4 @@
-# Setup Guide — CV DebugMate Python
+﻿# Setup Guide — MatrixViewer Debug
 
 ## Prerequisites
 
@@ -63,4 +63,4 @@ npm test
 | Panel shows nothing | Make sure a Python debug session is active and paused at a breakpoint |
 | "Cannot resolve variable" | The variable may be out of scope; step to the right frame |
 | Image shows as noise | Toggle **Auto Normalize** — float arrays need normalisation |
-| Large array hangs | Increase `cvDebugMate.largeDataThresholdMB` or reduce array size |
+| Large array hangs | Increase `matrixViewer.largeDataThresholdMB` or reduce array size |

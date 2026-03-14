@@ -1,4 +1,4 @@
-# C++ Usage Guide — Matrix Viewer Debug
+﻿# C++ Usage Guide — Matrix Viewer Debug
 
 [English](cpp.md) | [中文](../../zh/cpp.md)
 
@@ -81,8 +81,6 @@ test\test_cpp\scripts\bat\build_llvm.bat
 > `-fstandalone-debug` — embed complete type definitions for types from third-party
 > (e.g. MSVC-compiled) headers so LLDB can resolve them.
 
-<!-- TODO: screenshot — terminal showing successful build_llvm.bat output -->
-
 ### GCC + cppdbg (Linux / macOS / WSL)
 
 Standard Debug build works without extra flags:
@@ -138,36 +136,34 @@ Type detection works for simple types; `cv::Mat` and other complex types may sho
 }
 ```
 
-<!-- TODO: screenshot — launch.json open in VS Code editor -->
-
 ---
 
 ## Opening the Variables Panel
 
 1. Start the debug session (press **F5**) and let it pause at a breakpoint.
 2. Open the **Run and Debug** sidebar (`Ctrl+Shift+D`).
-3. Find the **CV DebugMate** section — it lists all visualizable variables in the current scope.
+3. Find the **MatrixViewer Debug** section — it lists all visualizable variables in the current scope.
 4. The list refreshes automatically on every debugger step.
 
-<!-- TODO: screenshot — CV DebugMate panel in the Debug sidebar showing C++ variables -->
+![MatrixViewer Debug panel in the Debug sidebar showing C++ variables](../../../assets/usage_images/cpp_debug_show_variables_list.png)
 
 ---
 
 ## Visualizing a Variable
 
-### Option 1 — CV DebugMate Panel (Recommended)
+### Option 1 — MatrixViewer Debug panel (Recommended)
 
-Click any variable name in the **CV DebugMate** panel.
+Click any variable name in the **MatrixViewer Debug** panel.
 
 ### Option 2 — Context Menu
 
-Right-click a variable in the native **Variables** pane → **View by CV DebugMate**.
+Right-click a variable in the native **Variables** pane → **View by MatrixViewer**.
 
 <!-- TODO: screenshot — right-click context menu on a cv::Mat variable -->
 
 ### Option 3 — Command Palette
 
-`Ctrl+Shift+P` → **CV DebugMate: Visualize Variable** → type the variable name.
+`Ctrl+Shift+P` → **MatrixViewer: View by MatrixViewer** → type the variable name.
 
 ---
 
@@ -298,9 +294,9 @@ A ready-to-run C++ demo lives in [`test/test_cpp/`](../../../test/test_cpp/).
 
 3. Open `test/test_cpp` in VS Code, press **F5**, select **C++ Demo (LLVM / CodeLLDB)**.
 
-4. The debugger stops at the breakpoint. Open the **CV DebugMate** panel to see all detected variables.
+4. The debugger stops at the breakpoint. Open the **MatrixViewer Debug** panel to see all detected variables.
 
-<!-- TODO: screenshot — demo.cpp breakpoint hit with CV DebugMate panel showing cv::Mat, Eigen, pcl variables -->
+<!-- TODO: screenshot — demo.cpp breakpoint hit with MatrixViewer Debug panel showing cv::Mat, Eigen, pcl variables -->
 
 ---
 
@@ -332,7 +328,7 @@ CMAKE_CXX_FLAGS_DEBUG:STRING=-O0 -gdwarf-4 -fstandalone-debug
 `stopAtEntry` is a `cppdbg`/`cppvsdbg` property and is not recognised by CodeLLDB.  
 → Rename it to `stopOnEntry` in the `"type": "lldb"` launch configuration.
 
-### Variable appears in Variables pane but not in CV DebugMate panel
+### Variable appears in Variables pane but not in MatrixViewer Debug panel
 
 The type may not yet be detected by Layer-1 quick detection.  
 → Use **Option 3 (Command Palette)** to visualize it by name directly.

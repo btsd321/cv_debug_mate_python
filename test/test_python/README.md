@@ -1,4 +1,4 @@
-# test_python — CV DebugMate Demo Project
+﻿# test_python — MatrixViewer Debug Demo Project
 
 Quick demo that exercises every supported variable type.
 
@@ -16,9 +16,9 @@ pip install -r requirements.txt
    code .
    ```
 2. Open `demo.py`.
-3. Press **F5** (uses the `"CV DebugMate: Run demo.py"` launch config).
+3. Press **F5** (uses the `"Matrix Viewer: Run demo.py"` launch config).
 4. The script stops at `breakpoint()`.
-5. Open the **Run and Debug** sidebar → find the **CV DebugMate** panel.
+5. Open the **Run and Debug** sidebar → find the **MatrixViewer Debug** panel.
 6. Click any variable to open its viewer.
 
 ## Variables

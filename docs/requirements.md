@@ -1,4 +1,4 @@
-# CV DebugMate 需求文档
+# MatrixViewer Debug 需求文档
 
 > 参考项目: [cv_debug_mate_cpp](https://github.com/dull-bird/cv_debug_mate_cpp)  
 > VS Code 调试可视化扩展，在调试过程中可视化 1/2/3D 数据结构。
@@ -80,7 +80,7 @@
   - 基础检测：通过变量的 `type` 字符串快速分类（不依赖调试器求值，速度快）
   - 增强检测：通过 `evaluate` 命令获取 `type(var).__name__`、`var.shape`、`var.dtype` 等信息精确分类
 - 变量按类型分组展示（图像组、曲线组、点云组）
-- 支持**手动添加变量**到面板（右键菜单 → "Add to CV DebugMate"）
+- 支持**手动添加变量**到面板（右键菜单 → "Add to MatrixViewer"）
 - 支持**变量分组**（Add to Group）
 
 ### 3.2 2D 图像查看器（Image Viewer）
@@ -267,16 +267,16 @@ Webview 渲染
 
 ## 六、使用方式
 
-### 方式 1：CV DebugMate 面板（推荐）
+### 方式 1：MatrixViewer Debug 面板（推荐）
 
 1. 启动 Python 调试会话
 2. 打开 **"运行和调试"** 侧边栏
-3. 找到 **CV DebugMate** 区域
+3. 找到 **MatrixViewer Debug** 区域
 4. 点击变量名即可查看
 
 ### 方式 2：右键菜单
 
-调试过程中，在变量上右键 → **"View by CV DebugMate"**
+调试过程中，在变量上右键 → **"View by MatrixViewer Debug"**
 
 ---
 

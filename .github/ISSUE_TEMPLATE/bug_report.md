@@ -1,6 +1,6 @@
----
+﻿---
 name: Bug Report
-about: Report a bug in CV DebugMate Python
+about: Report a bug in MatrixViewer Debug
 title: "[Bug] "
 labels: bug
 assignees: ''
@@ -38,4 +38,4 @@ arr = np.zeros((100, 100, 3), dtype=np.uint8)
 
 ## Logs / Screenshots
 
-<!-- Paste any error from the VS Code Output panel (CV DebugMate channel) -->
+<!-- Paste any error from the VS Code Output panel (MatrixViewer Debug channel) -->

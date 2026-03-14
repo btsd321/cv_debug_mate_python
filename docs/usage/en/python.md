@@ -1,4 +1,4 @@
-# Python Usage Guide — Matrix Viewer Debug
+﻿# Python Usage Guide — Matrix Viewer Debug
 
 [English](python.md) | [中文](../../zh/python.md)
 
@@ -69,11 +69,11 @@ npm run compile
 
 ## Opening the Variables Panel
 
-1. In the **Run and Debug** sidebar (`Ctrl+Shift+D`), scroll down until you see the **CV DebugMate** section.
+1. In the **Run and Debug** sidebar (`Ctrl+Shift+D`), scroll down until you see the **MatrixViewer Debug** section.
 2. The panel lists all variables in the current scope that can be visualized.
 3. The list refreshes automatically whenever the debugger steps to a new line.
 
-<!-- TODO: screenshot — CV DebugMate Variables panel showing detected variables -->
+<!-- TODO: screenshot — MatrixViewer Debug Variables panel showing detected variables -->
 
 ---
 
@@ -81,20 +81,20 @@ npm run compile
 
 There are three ways to open a viewer for a variable:
 
-### Option 1 — CV DebugMate Panel (Recommended)
+### Option 1 — MatrixViewer Debug panel (Recommended)
 
-Click any variable name in the **CV DebugMate** panel.  
+Click any variable name in the **MatrixViewer Debug** panel.  
 A webview opens with the appropriate viewer (Image / Plot / Point Cloud).
 
 ### Option 2 — Context Menu
 
-Right-click a variable in the native **Variables** pane → **View by CV DebugMate**.
+Right-click a variable in the native **Variables** pane → **View by MatrixViewer**.
 
 <!-- TODO: screenshot — Right-click context menu on a variable -->
 
 ### Option 3 — Command Palette
 
-`Ctrl+Shift+P` → **CV DebugMate: Visualize Variable** → type the variable name.
+`Ctrl+Shift+P` → **MatrixViewer: View by MatrixViewer** → type the variable name.
 
 ---
 
@@ -210,4 +210,4 @@ pip install -r requirements.txt
 code .
 ```
 
-<!-- TODO: screenshot — demo.py breakpoint hit with CV DebugMate panel open -->
+<!-- TODO: screenshot — demo.py breakpoint hit with MatrixViewer Debug panel open -->

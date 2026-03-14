@@ -1,4 +1,4 @@
-# C++ 使用指南 — Matrix Viewer Debug
+﻿# C++ 使用指南 — Matrix Viewer Debug
 
 [English](../../en/cpp.md) | 中文
 
@@ -81,8 +81,6 @@ test\test_cpp\scripts\bat\build_llvm.bat
 > `-fstandalone-debug` — 为第三方（如 MSVC 编译的）头文件中的类型嵌入完整类型定义，  
 > 使 LLDB 能够解析这些类型。
 
-<!-- TODO: 截图 — 终端显示 build_llvm.bat 成功构建输出 -->
-
 ### GCC + cppdbg（Linux / macOS / WSL）
 
 标准 Debug 构建无需额外标志：
@@ -138,36 +136,34 @@ make -j$(nproc)
 }
 ```
 
-<!-- TODO: 截图 — VS Code 编辑器中打开的 launch.json -->
-
 ---
 
 ## 打开变量面板
 
 1. 启动调试会话（按 **F5**），等待调试器在断点处暂停。
 2. 打开**运行和调试**侧边栏（`Ctrl+Shift+D`）。
-3. 找到 **CV DebugMate** 区域——列出当前作用域内所有可视化变量。
+3. 找到 **MatrixViewer Debug** 区域——列出当前作用域内所有可视化变量。
 4. 每次调试器步进时，列表自动刷新。
 
-<!-- TODO: 截图 — 调试侧边栏中的 CV DebugMate 面板，显示 C++ 变量列表 -->
+![调试侧边栏中的 MatrixViewer Debug 面板，显示 C++ 变量列表](../../../assets/usage_images/cpp_debug_show_variables_list.png)
 
 ---
 
 ## 可视化变量
 
-### 方式一：CV DebugMate 面板（推荐）
+### 方式一：MatrixViewer Debug 面板（推荐）
 
-点击 **CV DebugMate** 面板中的任意变量名。
+点击 **MatrixViewer Debug** 面板中的任意变量名。
 
 ### 方式二：右键菜单
 
-在原生**变量**面板中右键点击变量 → **View by CV DebugMate**。
+在原生**变量**面板中右键点击变量 → **View by MatrixViewer**。
 
 <!-- TODO: 截图 — 在 cv::Mat 变量上右键弹出菜单 -->
 
 ### 方式三：命令面板
 
-`Ctrl+Shift+P` → **CV DebugMate: Visualize Variable** → 输入变量名。
+`Ctrl+Shift+P` → **MatrixViewer: View by MatrixViewer** → 输入变量名。
 
 ---
 
@@ -298,9 +294,9 @@ make -j$(nproc)
 
 3. 用 VS Code 打开 `test/test_cpp`，按 **F5**，选择 **C++ Demo (LLVM / CodeLLDB)**。
 
-4. 调试器停在断点处，打开 **CV DebugMate** 面板查看所有已检测到的变量。
+4. 调试器停在断点处，打开 **MatrixViewer Debug** 面板查看所有已检测到的变量。
 
-<!-- TODO: 截图 — demo.cpp 断点触发，CV DebugMate 面板显示 cv::Mat、Eigen、pcl 变量 -->
+<!-- TODO: 截图 — demo.cpp 断点触发，MatrixViewer Debug 面板显示 cv::Mat、Eigen、pcl 变量 -->
 
 ---
 
@@ -332,7 +328,7 @@ CMAKE_CXX_FLAGS_DEBUG:STRING=-O0 -gdwarf-4 -fstandalone-debug
 `stopAtEntry` 是 `cppdbg`/`cppvsdbg` 专有属性，CodeLLDB 不识别。  
 → 在 `"type": "lldb"` 的启动配置中改为 `stopOnEntry`。
 
-### 变量在变量面板中可见，但未出现在 CV DebugMate 面板
+### 变量在变量面板中可见，但未出现在 MatrixViewer Debug 面板
 
 该类型可能尚未被 Layer-1 快速检测识别。  
 → 使用**方式三（命令面板）**直接通过变量名可视化。

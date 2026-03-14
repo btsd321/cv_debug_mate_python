@@ -1,4 +1,4 @@
-# Matrix Viewer Debug
+﻿# Matrix Viewer Debug
 
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.93%2B-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
 [![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdull-bird%2Fcv_debug_mate_python%2Fmain%2Fpackage.json&query=%24.version&label=version&color=blue)](https://github.com/dull-bird/cv_debug_mate_python)
@@ -19,7 +19,7 @@
 > **📂 示例项目：[`test/test_python/`](test/test_python/)**
 >
 > 包含所有支持类型的完整演示。
-> 打开调试器即可体验 CV DebugMate 的效果。
+> 打开调试器即可体验 MatrixViewer Debug 的效果。
 >
 > ```bash
 > cd test/test_python
@@ -90,11 +90,11 @@
 ### 快速开始
 
 1. 启动调试会话（Python 或 C++）
-2. 打开**运行和调试**侧边栏（`Ctrl+Shift+D`），找到 **CV DebugMate** 区域
+2. 打开**运行和调试**侧边栏（`Ctrl+Shift+D`），找到 **MatrixViewer Debug** 区域
 3. 点击变量名即可打开查看器
 
-也可以：在原生**变量**面板中右键点击变量 → **View by CV DebugMate**，  
-或使用命令面板（`Ctrl+Shift+P`）→ **CV DebugMate: Visualize Variable**。
+也可以：在原生**变量**面板中右键点击变量 → **View by MatrixViewer**，  
+或使用命令面板（`Ctrl+Shift+P`）→ **MatrixViewer: View by MatrixViewer**。
 
 ### 详细使用文档
 
