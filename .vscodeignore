@@ -16,3 +16,4 @@ tsconfig*.json
 **/*.DB
 assets/test_img.png
 assets/*.ico
+assets/usage_images/

@@ -38,8 +38,7 @@
 | -------------------- | --------------------------------------- | --------------- |
 | **图像（2D）** | `PIL.Image.Image` | 🖼️ 图像查看器 |
 | | `numpy.ndarray` shape `(H, W)` / `(H, W, 3)` / `(H, W, 4)` | 🖼️ 图像查看器 |
-| | `torch.Tensor` shape `(H, W)` / `(C, H, W)` / `(1, C, H, W)` | 🖼️ 图像查看器 |
-| | `cv2.UMat` / `cv2.cuda.GpuMat` | 🖼️ 图像查看器 |
+| | `cv2.UMat` | 🖼️ 图像查看器 |
 | **点云（3D）** | `numpy.ndarray` shape `(N, 3)` — XYZ | 📊 3D 查看器 |
 | | `numpy.ndarray` shape `(N, 6)` — XYZ + RGB | 📊 3D 查看器 |
 | | `open3d.geometry.PointCloud` | 📊 3D 查看器 |
@@ -48,7 +47,6 @@
 | | `numpy.ndarray` shape `(N, 2)` | 📈 2D 散点图 |
 | | 元素为数值的 `list` / `tuple` | 📈 1D 折线图 |
 | | 元素为 2 元素序列的 `list` / `tuple` | 📈 2D 散点图 |
-| | `torch.Tensor`（1D）| 📈 1D 折线图 |
 
 ### C++
 
@@ -147,7 +145,7 @@ npm run compile
 - VS Code 1.93.0+
 - **Python 调试**：Python 3.8+、[Python 扩展](https://marketplace.visualstudio.com/items?itemName=ms-python.python)（`ms-python.python`）、debugpy（随 Python 扩展自动安装）
 - **C++ 调试**：[C/C++ 扩展](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) 或 [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)
-- 可选 Python 包：`numpy`、`Pillow`、`torch`——根据需要可视化的类型按需安装
+- 可选 Python 包：`numpy`、`Pillow`——根据需要可视化的类型按需安装
 
 ---
 
@@ -161,7 +159,6 @@ IDebugAdapter             ← 每种语言一个实现（Python、C++、…）
        └─ ILib*Provider（libs/）  ← 每个三方库一个文件
             numpy/imageProvider.ts
             pil/imageProvider.ts
-            torch/imageProvider.ts
             … open3d/pointCloudProvider.ts（未来）
 ```
 

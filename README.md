@@ -38,8 +38,7 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 | -------------------- | --------------------------------------- | --------------- |
 | **Image (2D)** | `PIL.Image.Image` | 🖼️ Image Viewer |
 | | `numpy.ndarray` shape `(H, W)` / `(H, W, 3)` / `(H, W, 4)` | 🖼️ Image Viewer |
-| | `torch.Tensor` shape `(H, W)` / `(C, H, W)` / `(1, C, H, W)` | 🖼️ Image Viewer |
-| | `cv2.UMat` / `cv2.cuda.GpuMat` | 🖼️ Image Viewer |
+| | `cv2.UMat` | 🖼️ Image Viewer |
 | **Point Cloud (3D)** | `numpy.ndarray` shape `(N, 3)` — XYZ | 📊 3D Viewer |
 | | `numpy.ndarray` shape `(N, 6)` — XYZ + RGB | 📊 3D Viewer |
 | | `open3d.geometry.PointCloud` | 📊 3D Viewer |
@@ -48,7 +47,6 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 | | `numpy.ndarray` shape `(N, 2)` | 📈 2D Scatter |
 | | `list` / `tuple` of numeric values | 📈 1D Chart |
 | | `list` / `tuple` of 2-element seqs | 📈 2D Scatter |
-| | `torch.Tensor` (1D) | 📈 1D Chart |
 
 ### C++
 
@@ -147,7 +145,7 @@ npm run compile
 - VS Code 1.93.0+
 - **Python debugging**: Python 3.8+, [Python extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python) (`ms-python.python`), debugpy (installed automatically with the Python extension)
 - **C++ debugging**: [C/C++ extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) or [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)
-- Optional Python packages: `numpy`, `Pillow`, `torch` — depending on the types you want to visualize
+- Optional Python packages: `numpy`, `Pillow` — depending on the types you want to visualize
 
 ---
 
@@ -161,7 +159,6 @@ IDebugAdapter          ← one implementation per language (Python, C++, …)
        └─ ILib*Provider (libs/)  ← one file per third-party library
             numpy/imageProvider.ts
             pil/imageProvider.ts
-            torch/imageProvider.ts
             … open3d/pointCloudProvider.ts (future)
 ```
 
