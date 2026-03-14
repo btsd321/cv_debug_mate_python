@@ -1,2 +1,221 @@
-# cv_debug_mate_python
-一个用于在 Python 调试过程中可视化 1/2/3D 数据结构的 VS Code 扩展。  灵感来源于[ dull-bird 的 cv_debug_mate_cpp 插件](https://github.com/dull-bird/cv_debug_mate_cpp)。
+# Matrix Viewer Debug
+
+[![VS Code](https://img.shields.io/badge/VS%20Code-1.93%2B-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
+[![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdull-bird%2Fcv_debug_mate_python%2Fmain%2Fpackage.json&query=%24.version&label=version&color=blue)](https://github.com/dull-bird/cv_debug_mate_python)
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+[![debugpy](https://img.shields.io/badge/debugpy-supported-green)](https://github.com/microsoft/debugpy)
+
+[English](README.md) | [中文](README_CN.md)
+
+A Visual Studio Code extension for visualizing 1D/2D/3D data structures during debugging. Supports **Python** (debugpy) today; **C++** (cppdbg / lldb) support is in development.
+
+**Inspired by [cv_debug_mate_cpp](https://github.com/dull-bird/cv_debug_mate_cpp) and [Image Watch](https://marketplace.visualstudio.com/items?itemName=VisualCPPTeam.ImageWatch2022) for Visual Studio.**
+
+---
+
+## 🚀 Try It Now!
+
+> **📂 Example Project: [`test/test_python/`](test/test_python/)**
+>
+> Complete demo with ALL supported types!
+> Run with the debugger to see CV DebugMate in action.
+>
+> ```bash
+> cd test/test_python
+> pip install -r requirements.txt
+> # Open in VS Code, set a breakpoint, press F5
+> code .
+> ```
+
+---
+
+## ⚡ Supported Types (Quick Reference)
+
+| Category | Type | Visualization |
+| -------------------- | --------------------------------------- | --------------- |
+| **Image (2D)** | `PIL.Image.Image` | 🖼️ Image Viewer |
+| | `torch.Tensor` shape `(H, W)` / `(C, H, W)` / `(1, C, H, W)` | 🖼️ Image Viewer |
+| | `cv2.UMat` / `cv2.cuda.GpuMat` | 🖼️ Image Viewer |
+| | `Eigen::Matrix<T,R,C>` / `Eigen::Array<T,R,C>` rows>1, cols>2 | 🖼️ Image Viewer |
+| **Point Cloud (3D)** | `numpy.ndarray` shape `(N, 3)` — XYZ | 📊 3D Viewer |
+| | `numpy.ndarray` shape `(N, 6)` — XYZ + RGB | 📊 3D Viewer |
+| | `open3d.geometry.PointCloud` | 📊 3D Viewer |
+| | `list` / `tuple` of 3-element seqs | 📊 3D Viewer |
+| **Plot (1D/2D)** | `numpy.ndarray` shape `(N,)` | 📈 1D Chart |
+| | `numpy.ndarray` shape `(N, 2)` | 📈 2D Scatter |
+| | `list` / `tuple` of numeric values | 📈 1D Chart |
+| | `list` / `tuple` of 2-element seqs | 📈 2D Scatter |
+| | `torch.Tensor` (1D) | 📈 1D Chart |
+| | `Eigen::VectorX*` / `Eigen::RowVectorX*` | 📈 1D Chart |
+| | `Eigen::Matrix<T,N,1>` / `Eigen::Matrix<T,1,N>` | 📈 1D Chart |
+| | `Eigen::Matrix<T,N,2>` (N×2) | 📈 2D Scatter (col0=X, col1=Y) |
+
+> **Eigen routing rules**: query runtime `.rows()` / `.cols()` to decide viewer type:
+> - `cols == 1` or `rows == 1` → **1D line plot**
+> - `cols == 2` → **2D scatter** (column-major storage: X = col 0, Y = col 1)
+> - `rows > 1` and `cols > 2` → **image** (grayscale, auto-normalised)
+
+---
+
+## 🎯 Features
+
+| Feature | Description |
+| --------------------- | ------------------------------------------------------------------------------- |
+| **📈 1D Plot** | Line/Scatter/Histogram, custom X-axis, zoom, pan, export PNG/CSV |
+| **🖼️ 2D Image** | Multi-channel, auto-normalize, colormap, zoom up to 100×, pixel values on hover |
+| **📊 3D Point Cloud** | Three.js powered, color by X/Y/Z, adjustable point size, export PLY |
+| **🔗 View Sync** | Pair variables for synchronized zoom/pan/rotation across viewers |
+| **🔍 Auto Detection** | Variables panel auto-detects all visualizable types in current scope |
+| **🔄 Auto Refresh** | Webview auto-updates when stepping through code |
+
+---
+
+## 🔧 Debugger Support
+
+| Debugger | Session Type | 1D Data | Image | Point Cloud | Status |
+| --------- | ------------ | ------- | ----- | ----------- | ------ |
+| debugpy | `python` / `debugpy` | ✅ | ✅ | ✅ | **Supported** |
+| Jupyter | `jupyter` | ✅ | ✅ | ✅ | **Supported** |
+| cppdbg / lldb | `cppdbg` / `lldb` | 🔧 | 🔧 | 🔧 | **In development** |
+
+> Python support requires the [Python extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python) (`ms-python.python`) or a compatible debugpy launch config.
+
+---
+
+## 📖 Usage
+
+### Option 1: CV DebugMate Panel (Recommended)
+
+1. Start a Python debug session
+2. Open **"Run and Debug"** sidebar
+3. Find **CV DebugMate** section
+4. Click a variable name to visualize it
+
+### Option 2: Context Menu
+
+Right-click a variable in the **Variables** pane → **"View by CV DebugMate"**
+
+### Option 3: Command Palette
+
+Open the Command Palette (`Ctrl+Shift+P`) → search for **"CV DebugMate: Visualize Variable"**
+
+---
+
+## 📷 Screenshots
+
+### 1D Plot
+
+<!-- TODO: add screenshot -->
+
+### 2D Image
+
+<!-- TODO: add screenshot -->
+
+### 3D Point Cloud
+
+<!-- TODO: add screenshot -->
+
+### Variables Panel
+
+<!-- TODO: add screenshot -->
+
+---
+
+## 🎮 Controls
+
+### Image Viewer
+
+| Action | Control |
+| ------ | --------------- |
+| Zoom | Scroll wheel |
+| Pan | Drag |
+| Reset | Click "Reset" |
+| Colormap | Dropdown selector |
+| Export | Save PNG |
+
+### 3D Point Cloud Viewer
+
+| Action | Control |
+| ------ | -------------------- |
+| Rotate | Drag |
+| Zoom | Scroll wheel |
+| Color | Switch by X/Y/Z axis |
+| Export | Save PLY |
+
+### Plot Viewer
+
+| Action | Control |
+| ------ | -------------------------- |
+| Zoom | Rectangle select or scroll |
+| Pan | Drag |
+| Mode | Line / Scatter / Histogram |
+| Export | Save PNG / CSV |
+
+---
+
+## 📦 Installation
+
+### From VSIX
+
+1. Download `.vsix` file
+2. Extensions view (`Ctrl+Shift+X`) → `...` → "Install from VSIX..."
+
+### From Source
+
+```bash
+git clone https://github.com/dull-bird/cv_debug_mate_python
+cd cv_debug_mate_python
+npm install
+npm run compile
+# Press F5 to run in Extension Development Host
+```
+
+---
+
+## 📋 Requirements
+
+- VS Code 1.93.0+
+- **Python debugging**: Python 3.8+, [Python extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python) (`ms-python.python`), debugpy (installed automatically with the Python extension)
+- **C++ debugging** *(coming soon)*: [C/C++ extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) or [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)
+- Optional Python packages: `numpy`, `Pillow`, `torch` — depending on the types you want to visualize
+
+---
+
+## 🏗️ Architecture Overview
+
+The extension uses a two-level provider hierarchy so that adding a new library or a new language never requires touching existing code:
+
+```
+IDebugAdapter          ← one implementation per language (Python, C++, …)
+  └─ *Provider (coordinator)   ← one coordinator per viewer type (image / plot / pointCloud)
+       └─ ILib*Provider (libs/)  ← one file per third-party library
+            numpy/imageProvider.ts
+            pil/imageProvider.ts
+            torch/imageProvider.ts
+            … open3d/pointCloudProvider.ts (future)
+```
+
+| What to add | Where to add it |
+|---|---|
+| New **library** (e.g. open3d) | `src/adapters/<lang>/libs/<libName>/` |
+| New **language** (e.g. Rust) | `src/adapters/<lang>/` + register in `adapterRegistry.ts` |
+
+---
+
+## 🙏 Acknowledgments
+
+Inspired by [cv_debug_mate_cpp](https://github.com/dull-bird/cv_debug_mate_cpp) and [Image Watch](https://marketplace.visualstudio.com/items?itemName=VisualCPPTeam.ImageWatch2022) for Visual Studio.
+
+---
+
+## 📄 License
+
+MIT
+
+---
+
+## 🤝 Contributing
+
+Issues and PRs welcome!
+

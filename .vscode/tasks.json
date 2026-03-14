@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "watch",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "never"
+      },
+      "problemMatcher": [
+        {
+          "pattern": {
+            "regexp": "^\\s*$",
+            "file": 0,
+            "line": 0,
+            "message": 0
+          },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "\\[watch\\] build started",
+            "endsPattern": "\\[watch\\] build finished"
+          }
+        }
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

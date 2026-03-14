@@ -1,0 +1,17 @@
+node_modules/
+out/
+dist/
+*.vsix
+.vscode-test/
+*.log
+.DS_Store
+# Only ignore user-specific VS Code settings; keep launch/tasks configs
+.vscode/settings.json
+.vscode/*.code-workspace
+.venv/
+test/test_python/.vscode/launch.json
+c_cpp_properties.json
+
+*.db
+*.db-shm
+*.db-wal

@@ -1,0 +1,11 @@
+{
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "python.defaultInterpreterPath": "${workspaceFolder}/test/test_python/.venv/Scripts/python.exe",
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}/test/test_python/.venv/Lib/site-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/test/test_python/.venv/Lib/site-packages"
+    ]
+}

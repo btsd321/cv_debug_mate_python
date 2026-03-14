@@ -1,0 +1,195 @@
+{
+  "name": "matrix-viewer",
+  "displayName": "MatrixViewer Debug",
+  "description": "Visualize 1D/2D/3D data structures during debugging — supports Python (numpy, PIL, PyTorch, cv2) and C++ (cv::Mat, Eigen, PCL, std::vector)",
+  "version": "0.1.0",
+  "publisher": "btsd321",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.93.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/btsd321/matrix_viewer_debug"
+  },
+  "categories": [
+    "Debuggers",
+    "Visualization",
+    "Machine Learning"
+  ],
+  "keywords": [
+    "numpy",
+    "opencv",
+    "pytorch",
+    "image",
+    "debug",
+    "visualize",
+    "python",
+    "c++",
+    "cpp",
+    "eigen",
+    "pcl",
+    "point cloud",
+    "matrix"
+  ],
+  "icon": "assets/icon_256x256.png",
+  "activationEvents": [
+    "onDebug",
+    "onLanguage:python",
+    "onDebugSessionStart"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "matrixViewer.viewVariable",
+        "title": "View by MatrixViewer",
+        "category": "MatrixViewer"
+      },
+      {
+        "command": "matrixViewer.addToPanel",
+        "title": "Add to MatrixViewer Panel",
+        "category": "MatrixViewer"
+      },
+      {
+        "command": "matrixViewer.addToGroup",
+        "title": "Add to Group",
+        "category": "MatrixViewer"
+      },
+      {
+        "command": "matrixViewer.removeFromPanel",
+        "title": "Remove from Panel",
+        "icon": "$(close)",
+        "category": "MatrixViewer"
+      },
+      {
+        "command": "matrixViewer.syncPair",
+        "title": "Pair for Sync",
+        "category": "MatrixViewer"
+      },
+      {
+        "command": "matrixViewer.refreshPanel",
+        "title": "Refresh Panel",
+        "icon": "$(refresh)",
+        "category": "MatrixViewer"
+      }
+    ],
+    "views": {
+      "debug": [
+        {
+          "id": "matrixViewerPanel",
+          "name": "MatrixViewer Debug",
+          "when": "debugState == 'stopped' || matrixViewer.active"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "matrixViewer.refreshPanel",
+          "when": "view == matrixViewerPanel",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "matrixViewer.viewVariable",
+          "when": "view == matrixViewerPanel && viewItem == mvVariable",
+          "group": "inline"
+        },
+        {
+          "command": "matrixViewer.removeFromPanel",
+          "when": "view == matrixViewerPanel && viewItem == mvVariable",
+          "group": "inline"
+        },
+        {
+          "command": "matrixViewer.syncPair",
+          "when": "view == matrixViewerPanel && viewItem == mvVariable",
+          "group": "1_actions"
+        },
+        {
+          "command": "matrixViewer.addToGroup",
+          "when": "view == matrixViewerPanel && viewItem == mvVariable",
+          "group": "1_actions"
+        }
+      ],
+      "debug/variables/context": [
+        {
+          "command": "matrixViewer.viewVariable",
+          "when": "debugState == 'stopped'",
+          "group": "navigation"
+        },
+        {
+          "command": "matrixViewer.addToPanel",
+          "when": "debugState == 'stopped'",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "MatrixViewer",
+      "properties": {
+        "matrixViewer.autoDetect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically detect visualizable variables in the current scope when debugging stops"
+        },
+        "matrixViewer.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically refresh open viewers when stepping through code"
+        },
+        "matrixViewer.largeDataThresholdMB": {
+          "type": "number",
+          "default": 1,
+          "description": "Data size threshold (in MB) for switching to Base64 binary transfer instead of JSON"
+        },
+        "matrixViewer.maxDisplaySize": {
+          "type": "number",
+          "default": 50,
+          "description": "Maximum number of image megapixels to display (larger images will be downsampled)"
+        },
+        "matrixViewer.defaultColormap": {
+          "type": "string",
+          "default": "gray",
+          "enum": [
+            "gray",
+            "jet",
+            "hot",
+            "viridis",
+            "plasma"
+          ],
+          "description": "Default colormap for single-channel float images"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p tsconfig.test.json --outDir out",
+    "watch-tests": "tsc -p tsconfig.test.json -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.9",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.93.0",
+    "@typescript-eslint/eslint-plugin": "^8.10.0",
+    "@typescript-eslint/parser": "^8.10.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.24.0",
+    "eslint": "^9.13.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.6.3"
+  }
+}
