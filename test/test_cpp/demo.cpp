@@ -19,10 +19,6 @@
  *   pcl::PointCloud<pcl::PointXYZRGB>   → Point Cloud Viewer (XYZ + RGB)
  *   pcl::PointCloud<pcl::PointXYZI>     → Point Cloud Viewer (XYZ + intensity)
  *
- *   pcl::PointCloud<pcl::PointXYZ>      → Point Cloud Viewer (XYZ)
- *   pcl::PointCloud<pcl::PointXYZRGB>    → Point Cloud Viewer (XYZ + RGB)
- *   pcl::PointCloud<pcl::PointXYZI>      → Point Cloud Viewer (XYZ + intensity)
- *
  * Dependencies (all optional — missing libs are guarded by #ifdef):
  *   OpenCV  ≥ 4.x   (HAVE_OPENCV)
  *   Eigen   ≥ 3.x   (HAVE_EIGEN)
