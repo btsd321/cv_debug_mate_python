@@ -148,9 +148,9 @@ export function classifyNdarray(
         if (cols === 2) { return "plot"; }
         // [N, 3|6]    → 3D point cloud (XYZ or XYZ+RGB)
         if (cols === 3 || cols === 6) { return "pointcloud"; }
-        // All other 2D shapes are unsupported
+        // [H, W]      → grayscale image (e.g. cv2.imread with IMREAD_GRAYSCALE)
         void dtype;
-        return "unknown";
+        return "image";
     }
 
     // 3D: (H, W, C) image — cv2.imread() and similar ndarray images
@@ -222,11 +222,21 @@ export function isNumericDtype(dtype: string | null | undefined): boolean {
     return NUMERIC_DTYPES.has(base) || /^[uif]\d+$/.test(base);
 }
 
+/** Bytes per element for each known numpy dtype. */
+const DTYPE_BYTES: Record<string, number> = {
+    uint8: 1, uint16: 2, uint32: 4, uint64: 8,
+    int8: 1, int16: 2, int32: 4, int64: 8,
+    float16: 2, float32: 4, float64: 8,
+    bool: 1,
+};
+
 /** Number of bytes per element for a dtype string. Returns null if unknown. */
 export function bytesPerElement(dtype: string): number | null {
-    const m = dtype.match(/(\d+)$/);
-    if (!m) {
-        return null;
-    }
-    return parseInt(m[1], 10) / 8;
+    const base = dtype.replace(/[<>=!|]/g, "").toLowerCase();
+    const known = DTYPE_BYTES[base];
+    if (known !== undefined) { return known; }
+    // Handle shorthand like f32, u8, i64
+    const m = base.match(/^[uif](\d+)$/);
+    if (m) { return parseInt(m[1], 10) / 8; }
+    return null;
 }
