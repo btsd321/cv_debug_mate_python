@@ -11,6 +11,7 @@
  *   1. PIL.Image         → libs/pil/imageProvider
  *   2. torch.Tensor      → libs/torch/imageProvider
  *   3. cv2.UMat/GpuMat/Mat → libs/opencv/imageProvider
+ *   4. numpy.ndarray (H,W,C) → libs/numpy/imageProvider
  *
  * Note: plain numpy.ndarray is intentionally NOT registered here.
  * numpy arrays are visualized as 1D plots, 2D scatter, or 3D point clouds
@@ -24,6 +25,7 @@ import { ILibImageProvider } from "../ILibProviders";
 import { PilImageProvider } from "./libs/pil/imageProvider";
 import { TorchImageProvider } from "./libs/torch/imageProvider";
 import { OpenCvImageProvider } from "./libs/opencv/imageProvider";
+import { NumpyImageProvider } from "./libs/numpy/imageProvider";
 
 // ── Registry ────────────────────────────────────────────────────────────
 // Checked in order; the first provider whose canHandle() returns true is used.
@@ -32,6 +34,7 @@ const LIB_IMAGE_PROVIDERS: ILibImageProvider[] = [
     new PilImageProvider(),
     new TorchImageProvider(),
     new OpenCvImageProvider(),  // cv2.UMat / cv2.cuda.GpuMat / cv2.Mat
+    new NumpyImageProvider(),   // numpy.ndarray (H,W,C) — e.g. cv2.imread() results
 ];
 
 // ── Coordinator ────────────────────────────────────────────────────────────

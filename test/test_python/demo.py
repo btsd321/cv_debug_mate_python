@@ -24,7 +24,7 @@ Visualisation rules (as of current implementation):
   open3d.geometry.PointCloud            → 3D point cloud
 
   cv2.UMat                              → 2D image viewer (BGR; frontend Swap R/B toggle)
-  cv2.imread() result (numpy.ndarray)   → not an image viewer; shown as numpy array
+  cv2.imread() result (numpy.ndarray)   → 2D image viewer (numpy (H,W,3) now supported)
 """
 
 import os
@@ -105,11 +105,11 @@ my_list_3d = [(float(x), float(y), float(z))
               for x, y, z in cloud_xyz[:50]]               # 50 × (x, y, z)
 
 # =============================================================================
-# cv2.UMat  →  2D image viewer (BGR; use frontend "Swap R/B" toggle for RGB)
+# cv2 types  →  2D image viewer
 # =============================================================================
-_cv2_bgr  = cv2.imread(TEST_IMG_PATH)                              # numpy.ndarray (H, W, 3) BGR
-cv2_umat  = cv2.UMat(_cv2_bgr)                                     # cv2.UMat  → image viewer
-cv2_gray  = cv2.UMat(cv2.cvtColor(_cv2_bgr, cv2.COLOR_BGR2GRAY))  # cv2.UMat grayscale
+cv2_bgr   = cv2.imread(TEST_IMG_PATH)                              # numpy.ndarray (H, W, 3) BGR → image viewer
+cv2_umat  = cv2.UMat(cv2_bgr)                                      # cv2.UMat  → image viewer
+cv2_gray  = cv2.UMat(cv2.cvtColor(cv2_bgr, cv2.COLOR_BGR2GRAY))   # cv2.UMat grayscale → image viewer
 
 # =============================================================================
 # open3d.geometry.PointCloud  →  3D point cloud viewer

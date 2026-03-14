@@ -153,7 +153,14 @@ export function classifyNdarray(
         return "unknown";
     }
 
-    // 3D, 4D, etc. — not supported in this design
+    // 3D: (H, W, C) image — cv2.imread() and similar ndarray images
+    if (ndim === 3) {
+        const c = shape[2];
+        if (c === 1 || c === 3 || c === 4) { return "image"; }
+        return "unknown";
+    }
+
+    // 4D, etc. — not supported
     void dtype;
     return "unknown";
 }

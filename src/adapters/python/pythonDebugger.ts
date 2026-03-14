@@ -14,8 +14,8 @@
  */
 
 import * as vscode from "vscode";
-import * as net from "net";
 import { VariableInfo } from "../IDebugAdapter";
+import { receiveBytesViaTcp } from "../../utils/tcpTransfer";
 
 // Re-export VariableInfo so legacy imports via utils/debugger still work.
 export { VariableInfo } from "../IDebugAdapter";
@@ -246,80 +246,30 @@ async function fetchArraySmall(
 /**
  * Large arrays: loopback TCP socket transfer (bypasses DAP string-length limit).
  *
- * Inspired by https://github.com/elazarcoh/simply-view-image-for-python-debugging
- *
- * Flow:
- *   1. Node.js opens a TCP server on a random localhost port.
- *   2. A single DAP evaluate call sends a Python lambda that connects to the
- *      server and calls sendall(arr.tobytes()).  The lambda is a pure expression
- *      so it runs synchronously inside debugpy's evaluate thread.
- *   3. Node.js buffers the incoming bytes; resolves when Python closes the socket.
- *
- * No files are written.  Loopback throughput is typically >500 MB/s,
- * so a 12 MB array transfers in ~25 ms.
+ * Delegates to receiveBytesViaTcp (src/utils/tcpTransfer.ts).
+ * That module owns the server lifecycle; this function only builds the
+ * Python expression and triggers it via a DAP evaluate call.
  */
-const SOCKET_TRANSFER_TIMEOUT_MS = 20_000;
-
 async function fetchArrayLarge(
     session: vscode.DebugSession,
     varName: string,
     info: VariableInfo
 ): Promise<RawArrayData | null> {
-    return new Promise<RawArrayData | null>((resolve) => {
-        const server = net.createServer();
-        const chunks: Buffer[] = [];
-        let settled = false;
+    const bytesExpr = buildToBytesExpr(varName);
 
-        function settle(result: RawArrayData | null): void {
-            if (settled) { return; }
-            settled = true;
-            clearTimeout(timer);
-            // close() is idempotent; ignore the error if already closed
-            server.close();
-            resolve(result);
-        }
-
-        // Hard deadline: give up if nothing arrives within the timeout
-        const timer = setTimeout(() => settle(null), SOCKET_TRANSFER_TIMEOUT_MS);
-
-        server.once("error", () => settle(null));
-
-        server.once("connection", (socket) => {
-            socket.on("data", (chunk: Buffer) => chunks.push(chunk));
-            socket.once("end", () => {
-                const buf = Buffer.concat(chunks);
-                settle({
-                    buffer: new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength),
-                    dtype: info.dtype!,
-                    shape: info.shape!,
-                });
-            });
-            socket.once("error", () => settle(null));
-        });
-
-        // Start listening on a kernel-assigned random port, then trigger Python
-        server.listen(0, "127.0.0.1", async () => {
-            const port = (server.address() as net.AddressInfo).port;
-
-            // Pure Python expression (no exec, no global mutation):
-            //   outer lambda receives (bytes, port)
-            //   inner lambda receives socket, calls connect / sendall / close
-            const bytesExpr = buildToBytesExpr(varName);
-            const sendExpr =
-                `(lambda __arr, __port:` +
-                ` (lambda __s: (__s.connect(('127.0.0.1', __port)), __s.sendall(__arr), __s.close()))` +
-                ` (__import__('socket').socket()))` +
-                `(${bytesExpr}, ${port})`;
-
-            const evalResult = await evaluateExpression(session, sendExpr, info.frameId);
-            // null means evaluate timed-out or Python raised an exception;
-            // in both cases there will be no meaningful data on the socket.
-            if (evalResult === null) {
-                settle(null);
-            }
-            // Otherwise the socket 'end' handler will call settle() with the data.
-        });
+    const buffer = await receiveBytesViaTcp(async (port) => {
+        // Pure Python expression — outer lambda binds (bytes, port),
+        // inner lambda creates the socket, connects, sends, and closes.
+        const sendExpr =
+            `(lambda __arr, __port:` +
+            ` (lambda __s: (__s.connect(('127.0.0.1', __port)), __s.sendall(__arr), __s.close()))` +
+            ` (__import__('socket').socket()))` +
+            `(${bytesExpr}, ${port})`;
+        return evaluateExpression(session, sendExpr, info.frameId);
     });
+
+    if (!buffer) { return null; }
+    return { buffer, dtype: info.dtype!, shape: info.shape! };
 }
 
 /**
