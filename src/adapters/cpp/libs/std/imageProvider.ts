@@ -174,7 +174,7 @@ async function getFirstElementRef(
       (outer?.variables ?? []).find(
         (v: { name: string }) => v.name === "[0]"
       );
-    if (!firstRow) return null;
+    if (!firstRow) { return null; }
 
     if (firstRow.variablesReference && firstRow.variablesReference > 0) {
       const inner = await session.customRequest("variables", {
@@ -183,7 +183,7 @@ async function getFirstElementRef(
       const firstCell: { memoryReference?: string } | undefined = (
         inner?.variables ?? []
       ).find((v: { name: string }) => v.name === "[0]");
-      if (firstCell?.memoryReference) return firstCell.memoryReference;
+      if (firstCell?.memoryReference) { return firstCell.memoryReference; }
     }
     // Fallback: address of the first row itself
     return firstRow.memoryReference ?? null;

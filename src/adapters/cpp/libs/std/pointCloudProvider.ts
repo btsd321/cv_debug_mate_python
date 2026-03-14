@@ -50,7 +50,7 @@ async function getDataPointer(
       info.variablesReference,
       info.frameId
     );
-    if (ptr) return ptr;
+    if (ptr) { return ptr; }
   }
 
   const exprs = isUsingLLDB(session)
@@ -80,7 +80,7 @@ function unpackPoint3(
 
   for (let i = 0; i < count; i++) {
     const offset = i * stride;
-    if (offset + stride > buffer.byteLength) break;
+    if (offset + stride > buffer.byteLength) { break; }
     if (isDouble) {
       result.push(
         view.getFloat64(offset, true),

@@ -64,8 +64,8 @@ function eigenDtype(typeStr: string): string {
 }
 
 function bytesPerDtype(dtype: string): number {
-  if (dtype === "float64") return 8;
-  if (dtype === "float32") return 4;
+  if (dtype === "float64") { return 8; }
+  if (dtype === "float32") { return 4; }
   return 4;
 }
 

@@ -19,7 +19,6 @@ import { VariableInfo } from "../../../IDebugAdapter";
 import { ImageData, ImageFormat } from "../../../../viewers/viewerTypes";
 import { ILibImageProvider } from "../../../ILibProviders";
 import {
-  isUsingLLDB,
   readMemoryChunked,
 } from "../../cppDebugger";
 import { getBytesPerElement, cvDepthToDtype } from "./matUtils";

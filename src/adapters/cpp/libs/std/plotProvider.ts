@@ -65,7 +65,7 @@ async function getDataPointer(
       info.variablesReference,
       info.frameId
     );
-    if (ptr) return ptr;
+    if (ptr) { return ptr; }
   }
 
   // Fallback: evaluate &varName[0] or varName.data()

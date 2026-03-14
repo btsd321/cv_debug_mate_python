@@ -42,7 +42,7 @@ export default [
       "@typescript-eslint/explicit-function-return-type": "off",
       "@typescript-eslint/no-explicit-any": "warn",
       curly: "warn",
-      eqeqeq: "warn",
+      eqeqeq: ["warn", "always", { "null": "ignore" }],
       "no-throw-literal": "warn",
       semi: "warn",
     },

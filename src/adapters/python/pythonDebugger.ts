@@ -373,7 +373,6 @@ function flattenNestedArray(arr: unknown): number[] {
 }
 
 function numbersToBytesForDtype(numbers: number[], dtype: string): Uint8Array {
-  const n = numbers.length;
   switch (dtype) {
     case "uint8":
       return new Uint8Array(numbers);
@@ -394,24 +393,6 @@ function numbersToBytesForDtype(numbers: number[], dtype: string): Uint8Array {
     default:
       return new Uint8Array(new Float64Array(numbers).buffer);
   }
-  void n; // suppress unused warning
-}
-
-function bytesPerElementFromDtype(dtype: string): number | null {
-  const map: Record<string, number> = {
-    uint8: 1,
-    int8: 1,
-    uint16: 2,
-    int16: 2,
-    float16: 2,
-    uint32: 4,
-    int32: 4,
-    float32: 4,
-    uint64: 8,
-    int64: 8,
-    float64: 8,
-  };
-  return map[dtype] ?? null;
 }
 
 /**

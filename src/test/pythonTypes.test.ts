@@ -7,7 +7,6 @@
 import * as assert from "assert";
 import {
   basicTypeDetect,
-  detectVisualizableType,
   classifyNdarray,
   classifyTensor,
   isNumericDtype,

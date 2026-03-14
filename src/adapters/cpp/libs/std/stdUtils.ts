@@ -29,11 +29,11 @@ const BASIC_NUMERIC_SET = new Set([
 
 export function isBasicNumericType(elementType: string): boolean {
   const t = elementType.trim();
-  if (BASIC_NUMERIC_SET.has(t)) return true;
-  if (t.startsWith("class ") && BASIC_NUMERIC_SET.has(t.slice(6))) return true;
-  if (t.startsWith("struct ") && BASIC_NUMERIC_SET.has(t.slice(7))) return true;
+  if (BASIC_NUMERIC_SET.has(t)) { return true; }
+  if (t.startsWith("class ") && BASIC_NUMERIC_SET.has(t.slice(6))) { return true; }
+  if (t.startsWith("struct ") && BASIC_NUMERIC_SET.has(t.slice(7))) { return true; }
   const withoutSigned = t.replace(/^signed\s+/, "").trim();
-  if (BASIC_NUMERIC_SET.has(withoutSigned)) return true;
+  if (BASIC_NUMERIC_SET.has(withoutSigned)) { return true; }
   return false;
 }
 
@@ -289,7 +289,7 @@ export function isPoint3StdArray(typeStr: string): {
     typeStr.match(
       /std::(?:__1::)?array\s*<\s*(?:class\s+)?cv::Point3_\s*<\s*double\s*>\s*,\s*(\d+)\s*>/
     );
-  if (dm) return { isPoint3: true, isDouble: true, size: parseInt(dm[1]) };
+  if (dm) { return { isPoint3: true, isDouble: true, size: parseInt(dm[1]) }; }
 
   const fm =
     typeStr.match(
@@ -298,7 +298,7 @@ export function isPoint3StdArray(typeStr: string): {
     typeStr.match(
       /std::(?:__1::)?array\s*<\s*(?:class\s+)?cv::Point3_\s*<\s*float\s*>\s*,\s*(\d+)\s*>/
     );
-  if (fm) return { isPoint3: true, isDouble: false, size: parseInt(fm[1]) };
+  if (fm) { return { isPoint3: true, isDouble: false, size: parseInt(fm[1]) }; }
 
   return { isPoint3: false, isDouble: false, size: 0 };
 }

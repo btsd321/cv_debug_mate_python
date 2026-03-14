@@ -7,7 +7,7 @@
  */
 
 import * as vscode from "vscode";
-import { VariableInfo } from "./adapters/IDebugAdapter";
+
 import { getAdapter } from "./adapters/adapterRegistry";
 import { PanelManager } from "./utils/panelManager";
 
