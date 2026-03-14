@@ -51,6 +51,7 @@ export function buildPlotWebviewHtml(
       </select>
     </label>
     <button id="btn-reset">Reset</button>
+    <button id="btn-hist-config" style="display:none">Config</button>
     <button id="btn-save-png">Save PNG</button>
     <button id="btn-save-csv">Save CSV</button>
   </div>

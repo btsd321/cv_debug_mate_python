@@ -18,5 +18,5 @@ body {
 #toolbar button:hover { background: #505050; }
 #toolbar select { background: #3c3c3c; color: var(--text); border: 1px solid var(--border); }
 #stats-label { color: #888; font-size: 11px; margin-right: 8px; }
-#plot-container { flex: 1; overflow: hidden; }
-.u-wrap { height: 100% !important; }
+#plot-container { flex: 1; min-height: 0; overflow: hidden; }
+/* NOTE: do NOT override .u-wrap height — uPlot manages it internally */
