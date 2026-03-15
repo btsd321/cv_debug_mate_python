@@ -23,6 +23,15 @@ export type LogFn = (level: LogLevel, msg: string) => void;
 
 const LEVEL_ORDER: Record<LogLevel, number> = { DEBUG: 0, INFO: 1, WARN: 2, ERROR: 3 };
 
+function timestamp(): string {
+    const d = new Date();
+    const hh  = String(d.getHours()).padStart(2, "0");
+    const mm  = String(d.getMinutes()).padStart(2, "0");
+    const ss  = String(d.getSeconds()).padStart(2, "0");
+    const ms  = String(d.getMilliseconds()).padStart(3, "0");
+    return `${hh}:${mm}:${ss}.${ms}`;
+}
+
 // ── Singleton ─────────────────────────────────────────────────────────────
 
 class Logger {
@@ -45,7 +54,7 @@ class Logger {
     /** Core method — only emits when `level` >= current filter level. */
     private logf(level: LogLevel, message: string): void {
         if (LEVEL_ORDER[level] >= LEVEL_ORDER[this._level]) {
-            this._channel?.appendLine(`[${level}] ${message}`);
+            this._channel?.appendLine(`[${timestamp()}] [${level}] ${message}`);
         }
     }
 
