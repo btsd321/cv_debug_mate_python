@@ -248,9 +248,11 @@ export async function getQContainerSize(
     }
 
     // ── Strategy 1b: cppvsdbg may surface d with varRef=0; try [QList]  ──
+    // Also handles debuggers wrapping QList<T> in a single anonymous child
+    // (name="", value="{d:0x...}") — expand it to find the real d-ptr.
     if (!dVar) {
         const qlistBase = children.find(
-            v => /^\[?Q(?:Vector|List)/.test(v.name) && (v.variablesReference ?? 0) > 0
+            v => (/^\[?Q(?:Vector|List)/.test(v.name) || v.name === "") && (v.variablesReference ?? 0) > 0
         );
         if (qlistBase?.variablesReference) {
             logger.debug(`getQContainerSize: trying [QList/QVector] base varRef=${qlistBase.variablesReference}`);
@@ -375,9 +377,10 @@ export async function getQVectorDataPointer(
     let dVarRef: number = dVar?.variablesReference ?? 0;
 
     // Strategy: look inside [QList]/[QVector] base child when d.varRef=0
+    // Also handles anonymous wrapper nodes (name="") used by some debuggers.
     if (dVarRef === 0) {
         const baseNode = children.find(
-            v => /^\[?Q(?:Vector|List)/.test(v.name) && (v.variablesReference ?? 0) > 0
+            v => (/^\[?Q(?:Vector|List)/.test(v.name) || v.name === "") && (v.variablesReference ?? 0) > 0
         );
         if (baseNode?.variablesReference) {
             try {

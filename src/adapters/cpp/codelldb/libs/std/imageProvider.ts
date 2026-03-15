@@ -18,6 +18,7 @@ import * as vscode from "vscode";
 import { VariableInfo } from "../../../../IDebugAdapter";
 import { ImageData, ImageFormat } from "../../../../../viewers/viewerTypes";
 import { ILibImageProvider } from "../../../../ILibProviders";
+import { logger } from "../../../../../log/logger";
 import {
     readMemoryChunked,
     build2DDataPointerExpressions,
@@ -127,10 +128,12 @@ export class StdImageProvider implements ILibImageProvider {
             : build2DDataPointerExpressions(varName);
 
         let dataPtr = await tryGetDataPointer(session, exprs, info.frameId);
+        logger.debug(`[StdImage] ${varName}: tryGetDataPointer -> ${dataPtr}`);
 
         // Fallback: use [0][0] child memoryReference via variables tree
         if (!dataPtr && info.variablesReference && info.variablesReference > 0) {
             dataPtr = await getFirstElementRef(session, info.variablesReference);
+            logger.debug(`[StdImage] ${varName}: getFirstElementRef -> ${dataPtr}`);
         }
 
         if (!dataPtr) {
@@ -162,8 +165,13 @@ export class StdImageProvider implements ILibImageProvider {
 }
 
 /**
- * Walk two levels of the DAP variables tree to find the memoryReference of
- * the first innermost element ([0] → [0]).  Returns null on any failure.
+ * Walk one or two levels of the DAP variables tree to find the memoryReference
+ * of the first contiguous data element.
+ *
+ * Handles both layouts:
+ *   - Typical (GDB/Linux): top-level has `[0]` row children
+ *   - MSVC STL (CodeLLDB/Windows): top-level has `_Elems` whose
+ *     memoryReference directly points to the contiguous array storage
  */
 async function getFirstElementRef(
     session: vscode.DebugSession,
@@ -171,20 +179,35 @@ async function getFirstElementRef(
 ): Promise<string | null> {
     try {
         const outer = await session.customRequest("variables", { variablesReference });
-        const firstRow: { variablesReference?: number; memoryReference?: string } | undefined =
-            (outer?.variables ?? []).find(
-                (v: { name: string }) => v.name === "[0]"
-            );
+        const outerVars: { name: string; variablesReference?: number; memoryReference?: string }[] =
+            outer?.variables ?? [];
+        logger.debug(
+            `[getFirstElementRef] variablesRef=${variablesReference} ` +
+            `children=[${outerVars.map(v => `${v.name}(mr=${v.memoryReference ?? "none"})`).join(", ")}]`
+        );
+
+        // MSVC STL std::array: "_Elems" field holds the raw contiguous storage.
+        // Its memoryReference already points to the first element.
+        const elemsChild = outerVars.find((v) => v.name === "_Elems");
+        if (elemsChild?.memoryReference) {
+            logger.debug(`[getFirstElementRef] using _Elems.memoryReference=${elemsChild.memoryReference}`);
+            return elemsChild.memoryReference;
+        }
+
+        // Standard [0] row → [0] cell traversal
+        const firstRow = outerVars.find((v) => v.name === "[0]");
         if (!firstRow) { return null; }
 
         if (firstRow.variablesReference && firstRow.variablesReference > 0) {
             const inner = await session.customRequest("variables", {
                 variablesReference: firstRow.variablesReference,
             });
-            const firstCell: { memoryReference?: string } | undefined = (
-                inner?.variables ?? []
-            ).find((v: { name: string }) => v.name === "[0]");
-            if (firstCell?.memoryReference) { return firstCell.memoryReference; }
+            const innerVars: { name: string; memoryReference?: string }[] = inner?.variables ?? [];
+            const firstCell = innerVars.find((v) => v.name === "[0]" || v.name === "_Elems");
+            if (firstCell?.memoryReference) {
+                logger.debug(`[getFirstElementRef] using row[0].${firstCell.name}=${firstCell.memoryReference}`);
+                return firstCell.memoryReference;
+            }
         }
         // Fallback: address of the first row itself
         return firstRow.memoryReference ?? null;

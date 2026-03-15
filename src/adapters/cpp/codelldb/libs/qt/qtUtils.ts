@@ -11,7 +11,7 @@
  */
 
 import * as vscode from "vscode";
-import { isValidMemoryReference } from "../../debugger";
+import { isValidMemoryReference, readMemoryChunked } from "../../debugger";
 import { logger } from "../../../../../log/logger";
 
 // ── QImage Format constants ──────────────────────────────────────────────
@@ -248,9 +248,11 @@ export async function getQContainerSize(
     }
 
     // ── Strategy 1b: cppvsdbg may surface d with varRef=0; try [QList]  ──
+    // Also handles CodeLLDB wrapping QList<T> in a single anonymous child
+    // (name="", value="{d:0x...}") — expand it to find the real d-ptr.
     if (!dVar) {
         const qlistBase = children.find(
-            v => /^\[?Q(?:Vector|List)/.test(v.name) && (v.variablesReference ?? 0) > 0
+            v => (/^\.?\[?Q(?:Vector|List)/.test(v.name) || v.name === "") && (v.variablesReference ?? 0) > 0
         );
         if (qlistBase?.variablesReference) {
             logger.debug(`getQContainerSize: trying [QList/QVector] base varRef=${qlistBase.variablesReference}`);
@@ -307,6 +309,68 @@ export async function getQContainerSize(
     }
 
     logger.warn(`getQContainerSize: all strategies failed, children=[${children.map(v => v.name).join(", ")}]`);
+
+    // ── Strategy 3: LLDB synthetic indexed children (CodeLLDB + LLDB Qt formatters) ──
+    // When LLDB has a Qt data formatter, the container's variablesReference
+    // directly holds the synthetic elements ([0], [1], …) but they are only
+    // returned when filter="indexed" is explicitly specified.
+    // Request a small slice just to verify elements exist; the TOTAL count
+    // must come from the indexedVariables hint captured at scope-enumeration
+    // time (stored in VariableInfo.indexedVariables).  Signal availability by
+    // returning 1 so callers fall through to the indexedVariables path.
+    if (children.length === 0) {
+        logger.debug(`getQContainerSize: children=[] — attempting synthetic-indexed probe for varRef=${variablesReference}`);
+        try {
+            const synResp = await session.customRequest("variables", {
+                variablesReference,
+                filter: "indexed",
+                start: 0,
+                count: 2,
+            });
+            const synChildren: DapVar[] = synResp?.variables ?? [];
+            logger.debug(`getQContainerSize: synthetic-indexed probe rawResp keys=[${Object.keys(synResp ?? {}).join(",")}] totalCount=${(synResp as Record<string, unknown>)?.totalCount ?? "(none)"} count=${synChildren.length} children=[${synChildren.map(v => `${v.name}(memRef=${v.memoryReference ?? ""},val=${v.value})`).join(", ")}]`);
+            // Also try without filter in case CodeLLDB doesn't accept filter but does accept start+count
+            if (synChildren.length === 0) {
+                const noFilterResp = await session.customRequest("variables", {
+                    variablesReference,
+                    start: 0,
+                    count: 2,
+                });
+                const nfChildren: DapVar[] = noFilterResp?.variables ?? [];
+                logger.debug(`getQContainerSize: no-filter probe totalCount=${(noFilterResp as Record<string, unknown>)?.totalCount ?? "(none)"} count=${nfChildren.length} children=[${nfChildren.map(v => `${v.name}(memRef=${v.memoryReference ?? ""},val=${v.value})`).join(", ")}]`);
+                if (nfChildren.length > 0) {
+                    // Use no-filter result
+                    logger.debug(`getQContainerSize: returning sentinel 1 via no-filter probe`);
+                    return 1;
+                }
+            }
+            if (synChildren.length > 0) {
+                // Signal to the caller that the container exists and has elements;
+                // the caller must use indexedVariables for the real count.
+                logger.debug(`getQContainerSize: returning sentinel 1 (real count from indexedVariables)`);
+                return 1;
+            }
+        } catch (e) {
+            logger.debug(`getQContainerSize: synthetic-indexed probe threw: ${e}`);
+            // Also try without filter
+            try {
+                const noFilterResp = await session.customRequest("variables", {
+                    variablesReference,
+                    start: 0,
+                    count: 2,
+                });
+                const nfChildren: DapVar[] = noFilterResp?.variables ?? [];
+                logger.debug(`getQContainerSize: fallback no-filter probe totalCount=${(noFilterResp as Record<string, unknown>)?.totalCount ?? "(none)"} count=${nfChildren.length}`);
+                if (nfChildren.length > 0) {
+                    logger.debug(`getQContainerSize: returning sentinel 1 via fallback no-filter probe`);
+                    return 1;
+                }
+            } catch (e2) {
+                logger.debug(`getQContainerSize: fallback no-filter probe also threw: ${e2}`);
+            }
+        }
+    }
+
     return 0;
 }
 
@@ -375,9 +439,10 @@ export async function getQVectorDataPointer(
     let dVarRef: number = dVar?.variablesReference ?? 0;
 
     // Strategy: look inside [QList]/[QVector] base child when d.varRef=0
+    // Also handles CodeLLDB wrapping QList<T> as one anonymous child (name="").
     if (dVarRef === 0) {
         const baseNode = children.find(
-            v => /^\[?Q(?:Vector|List)/.test(v.name) && (v.variablesReference ?? 0) > 0
+            v => (/^\.?\[?Q(?:Vector|List)/.test(v.name) || v.name === "") && (v.variablesReference ?? 0) > 0
         );
         if (baseNode?.variablesReference) {
             try {
@@ -395,7 +460,10 @@ export async function getQVectorDataPointer(
         }
     }
 
-    if (dVarRef === 0) { return null; }
+    if (dVarRef === 0) {
+        logger.debug(`getQVectorDataPointer: dVarRef=0, d.value="${dVar?.value ?? ""}" d.memRef="${dVar?.memoryReference ?? ""}"; skipping tree walk, falling to synthetic-children probe`);
+        // Skip the tree-walk block entirely and jump to the synthetic-indexed fallback below.
+    } else {
 
     let dVars: DapVar[] = [];
     try {
@@ -477,7 +545,40 @@ export async function getQVectorDataPointer(
         } catch { /* fall through */ }
     }
 
+    } // end dVarRef > 0 block
+
     logger.debug(`getQVectorDataPointer: could not resolve via tree`);
+
+    // ── Fallback: LLDB synthetic indexed children ───────────────────────────────
+    // CodeLLDB with LLDB Qt formatters exposes array elements as indexed
+    // synthetic children when filter="indexed" is specified.  Fetch [0] and [1]
+    // to determine the data pointer and the inter-element stride.
+    try {
+        const synResp = await session.customRequest("variables", {
+            variablesReference,
+            filter: "indexed",
+            start: 0,
+            count: 2,
+        });
+        const synChildren: DapVar[] = synResp?.variables ?? [];
+        logger.debug(`getQVectorDataPointer: synthetic children=[${synChildren.map(v => v.name).join(", ")}]`);
+        const c0 = synChildren.find(v => v.name === "[0]");
+        if (c0?.memoryReference && isValidMemoryReference(c0.memoryReference)) {
+            // Determine stride by comparing [0] and [1] addresses.
+            // Qt5 QList inline: stride=8 (void* slot); Qt6/QVector contiguous: stride=sizeof(T).
+            let slotStride: 0 | 8 = 0;
+            const c1 = synChildren.find(v => v.name === "[1]");
+            if (c1?.memoryReference && isValidMemoryReference(c1.memoryReference)) {
+                const diff = Number(BigInt(c1.memoryReference) - BigInt(c0.memoryReference));
+                if (diff === 8) { slotStride = 8; }
+                logger.debug(`getQVectorDataPointer: synthetic [0]=${c0.memoryReference} [1]=${c1.memoryReference} diff=${diff} → slotStride=${slotStride}`);
+            } else {
+                logger.debug(`getQVectorDataPointer: synthetic [0]=${c0.memoryReference} (single element, slotStride=0)`);
+            }
+            return { ptr: c0.memoryReference, slotStride };
+        }
+    } catch { /* fall through */ }
+
     return null;
 }
 
@@ -573,6 +674,93 @@ function extractFromDVars(vars: DapVar[]): QImageInfo | null {
 }
 
 /**
+ * Read QImageData struct fields directly from memory when the d-ptr has a
+ * known address but variablesReference=0 (CodeLLDB with MSVC-PDB-only builds).
+ *
+ * Qt5 QImageData 64-bit Windows MSVC layouts:
+ *
+ *   Layout A — Qt 5.0 – 5.13 (no colorSpace field)
+ *     offset  0  QAtomicInt ref           4
+ *     offset  4  int width                4
+ *     offset  8  int height               4
+ *     offset 12  int depth                4
+ *     offset 16  qsizetype nbytes         8
+ *     offset 24  QList<QRgb> colorTable   8  (single d-ptr)
+ *     offset 32  uchar* data              8
+ *     offset 40  QImage::Format format    4
+ *
+ *   Layout B — Qt 5.14+ / Qt 6 (adds QScopedPointer<QColorSpace>)
+ *     offset 32  QScopedPointer colorSpace 8
+ *     offset 40  uchar* data              8
+ *     offset 48  QImage::Format format    4
+ *
+ * Validates each candidate by checking that the data pointer is a plausible
+ * Windows 64-bit user-space address and that the format number is supported.
+ */
+async function readQImageDataFromRawMemory(
+    session: vscode.DebugSession,
+    dAddr: string
+): Promise<QImageInfo | null> {
+    const buf = await readMemoryChunked(session, dAddr, 64);
+    if (!buf || buf.length < 52) {
+        logger.debug(`readQImageDataFromRawMemory: read failed or too short (${buf?.length ?? 0} bytes)`);
+        return null;
+    }
+
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+
+    // width @ 4, height @ 8 — stable in all Qt5/Qt6 64-bit layouts
+    const width  = dv.getInt32(4, true);
+    const height = dv.getInt32(8, true);
+    if (width <= 0 || width > 65536 || height <= 0 || height > 65536) {
+        logger.debug(`readQImageDataFromRawMemory: implausible size ${width}x${height} at ${dAddr}`);
+        return null;
+    }
+
+    // nbytes @ 16 (qsizetype = 8 bytes); treat as 0 if > 4 GB (implausible)
+    const nbytesLo = dv.getUint32(16, true);
+    const nbytesHi = dv.getUint32(20, true);
+    const nbytes   = (nbytesHi === 0) ? nbytesLo : 0;
+
+    // Try Layout A then Layout B
+    const candidates: Array<{ dataOff: number; fmtOff: number; label: string }> = [
+        { dataOff: 32, fmtOff: 40, label: "Qt5-pre5.14" },
+        { dataOff: 40, fmtOff: 48, label: "Qt5.14+" },
+    ];
+
+    for (const { dataOff, fmtOff, label } of candidates) {
+        if (buf.length < fmtOff + 4) { continue; }
+
+        const dataAddrLo = dv.getUint32(dataOff,     true);
+        const dataAddrHi = dv.getUint32(dataOff + 4, true);
+        const format     = dv.getInt32(fmtOff, true);
+
+        // Validate format: must be a known QImage::Format in [0, 29]
+        if (format < 0 || format > 29) { continue; }
+        const layout = qImageLayout(format);
+        if (!layout) { continue; }
+
+        // Validate data pointer: non-null, top 16 bits = 0 (Windows user-space < 128 TB)
+        if (dataAddrHi > 0xFFFF) { continue; }
+        if (dataAddrLo === 0 && dataAddrHi === 0) { continue; }
+
+        const dataAddr = "0x" + (
+            BigInt(dataAddrHi) * BigInt(0x100000000) + BigInt(dataAddrLo)
+        ).toString(16).toUpperCase();
+
+        const bytesPerLine = width * layout.bytesPerPixel;
+        const minBytes     = bytesPerLine * height;
+        const totalBytes   = (nbytes >= minBytes && nbytes <= minBytes * 4) ? nbytes : minBytes;
+
+        logger.debug(`readQImageDataFromRawMemory: ${label} → ${width}x${height} fmt=${format} ptr=${dataAddr} totalBytes=${totalBytes}`);
+        return { width, height, format, bytesPerLine, totalBytes, dataPtr: dataAddr };
+    }
+
+    logger.debug(`readQImageDataFromRawMemory: no valid layout matched for ${dAddr}`);
+    return null;
+}
+
+/**
  * Walk the DAP variable tree for a QImage to extract its metadata without
  * calling any member functions (which cppvsdbg often cannot evaluate).
  *
@@ -665,6 +853,24 @@ export async function getQImageInfoFromVariables(
             } catch { /* fall through */ }
         } else {
             logger.debug(`getQImageInfoFromVariables: no expandable d-ptr found, topVars=[${topVars.map(v => v.name).join(", ")}]`);
+        }
+
+        // ── Raw-memory fallback (CodeLLDB + MSVC PDB) ────────────────────
+        // When d-ptr has variablesReference=0 (LLDB cannot expand the struct)
+        // but its memoryReference / value string gives us the heap address,
+        // read the QImageData struct bytes directly at that address.
+        if (dVar && (dVar.variablesReference ?? 0) === 0) {
+            const dAddr = dVar.memoryReference
+                ?? dVar.value?.match(/^(0x[0-9a-fA-F]+)/)?.[1];
+            if (dAddr && isValidMemoryReference(dAddr)) {
+                logger.debug(`getQImageInfoFromVariables: raw-memory fallback dAddr=${dAddr}`);
+                const rawInfo = await readQImageDataFromRawMemory(session, dAddr);
+                if (rawInfo) {
+                    logger.debug(`getQImageInfoFromVariables: raw-memory OK ${rawInfo.width}x${rawInfo.height} fmt=${rawInfo.format} ptr=${rawInfo.dataPtr}`);
+                    return rawInfo;
+                }
+                logger.debug(`getQImageInfoFromVariables: raw-memory fallback failed`);
+            }
         }
 
         // ── Fallback: natvis may expose QImageData fields at top level ───

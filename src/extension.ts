@@ -64,11 +64,25 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "matrixViewer.addToPanel",
-            async (variable: { name: string; value: string; type: string }) => {
-                if (!variable?.name) {
+            async (item: { name?: string; type?: string; variable?: { name?: string; evaluateName?: string; type?: string } } | MvVariableItem) => {
+                let varName: string;
+                let typeStr: string;
+                if (item instanceof MvVariableItem) {
+                    varName = item.variableName;
+                    typeStr = item.typeLabel;
+                } else {
+                    // Called from debug/variables/context: VS Code passes
+                    // { sessionId, container, variable: { name, value, type, evaluateName, ... } }
+                    const asCtx = item as { variable?: { name?: string; evaluateName?: string; type?: string }; name?: string; type?: string };
+                    varName = asCtx.variable?.evaluateName ?? asCtx.variable?.name ?? asCtx.name ?? "";
+                    typeStr = asCtx.variable?.type ?? asCtx.type ?? "";
+                }
+                logger.debug(`addToPanel resolved varName: "${varName}" type: "${typeStr}"`);
+                if (!varName) {
+                    vscode.window.showWarningMessage("MatrixViewer: could not resolve variable name from context.");
                     return;
                 }
-                variablesProvider.addVariable(variable.name, variable.type ?? "");
+                variablesProvider.addVariable(varName, typeStr);
             }
         )
     );

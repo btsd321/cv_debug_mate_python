@@ -11,6 +11,7 @@ import {
     tryGetDataPointer,
 } from "../../debugger";
 import { cppTypeToDtype } from "../utils";
+import { logger } from "../../../../../log/logger";
 
 // ── Dtype resolution ──────────────────────────────────────────────────────
 
@@ -68,7 +69,13 @@ export async function evalEigenDim(
     ];
     for (const expr of exprs) {
         const res = await evaluateExpression(session, expr, frameId);
-        const n = parseInt(res ?? "");
+        logger.debug(`[evalEigenDim] ${varName}.${prop} expr=${expr} -> ${JSON.stringify(res)}`);
+        // LLDB may return "(type) $N = value"
+        const direct = parseInt((res ?? "").trim());
+        const n = !isNaN(direct) ? direct : (() => {
+            const m = (res ?? "").match(/=\s*(-?\d+)/);
+            return m ? parseInt(m[1]) : NaN;
+        })();
         if (!isNaN(n) && n > 0 && n < 100_000_000) {
             return n;
         }
@@ -98,5 +105,125 @@ export async function getEigenDataPointer(
         `${varName}.m_storage.m_data.array`,
         `${varName}.m_storage.m_data`,
     ];
-    return tryGetDataPointer(session, exprs, frameId);
+    const ptr = await tryGetDataPointer(session, exprs, frameId);
+    logger.debug(`[getEigenDataPointer] ${varName} evaluate -> ${ptr}`);
+    return ptr;
+}
+
+// ── Variables-tree fallback for LLDB/MSVC where evaluation fails ────────────
+
+type EigenInfo = { rows: number; cols: number; dataPtr: string | null };
+
+/**
+ * Navigate the DAP variables tree to extract Eigen rows, cols, and data pointer.
+ *
+ * Eigen::Matrix DenseStorage layout (accessed via variables tree):
+ *   - Dynamic: m_storage → { m_rows, m_cols, m_data → { array } }
+ *   - Fixed-rows dynamic-cols (e.g. VectorXd): m_storage → { m_rows, m_data → { array } }
+ *     cols is compile-time 1 (not stored in m_storage)
+ *
+ * @param compiledCols  Cols dimension from the type string (-1 = dynamic, else fixed)
+ */
+export async function getEigenInfoFromTree(
+    session: vscode.DebugSession,
+    variablesReference: number,
+    compiledCols: number
+): Promise<EigenInfo> {
+    const expand = async (ref: number) => {
+        const r = await session.customRequest("variables", { variablesReference: ref });
+        return (r?.variables ?? []) as {
+            name: string;
+            value?: string;
+            variablesReference?: number;
+            memoryReference?: string;
+        }[];
+    };
+
+    try {
+        let top = await expand(variablesReference);
+        logger.debug(
+            `[getEigenInfoFromTree] top children: ` +
+            top.map(v => `${v.name}=${v.value ?? "?"}`).join(", ")
+        );
+
+        // CodeLLDB may expose the Eigen base class as a single synthetic child:
+        // "Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1>>"
+        // m_storage lives inside it — expand one more level.
+        if (!top.find((v) => v.name === "m_storage")) {
+            const baseChild = top.find(
+                (v) => /^Eigen::/.test(v.name) && (v.variablesReference ?? 0) > 0
+            );
+            if (baseChild?.variablesReference) {
+                // Extract compile-time cols from the full template inside the name:
+                // "Eigen::PlainObjectBase<Eigen::Matrix<T, Rows, Cols, ...)>"
+                if (compiledCols <= 0) {
+                    const m = baseChild.name.match(
+                        /Eigen::Matrix\s*<[^,]+,\s*[^,]+,\s*(-?\d+)/
+                    );
+                    if (m) { compiledCols = parseInt(m[1]); }
+                }
+                const baseChildren = await expand(baseChild.variablesReference);
+                logger.debug(
+                    `[getEigenInfoFromTree] base children: ` +
+                    baseChildren.map(v => `${v.name}=${v.value ?? "?"}`).join(", ")
+                );
+                top = baseChildren;
+            }
+        }
+
+        const storageChild = top.find((v) => v.name === "m_storage");
+        if (!storageChild?.variablesReference) {
+            return { rows: 0, cols: 0, dataPtr: null };
+        }
+
+        const storage = await expand(storageChild.variablesReference);
+        logger.debug(
+            `[getEigenInfoFromTree] m_storage children: ` +
+            storage.map(v => `${v.name}=${v.value ?? "?"}`).join(", ")
+        );
+
+        // Read m_rows (Dynamic rows)
+        const mRowsChild = storage.find((v) => v.name === "m_rows");
+        const rows = parseTreeInt(mRowsChild?.value);
+
+        // Read m_cols (Dynamic cols) — only present when cols is dynamic (-1)
+        let cols = compiledCols > 0 ? compiledCols : 0;
+        if (cols <= 0) {
+            const mColsChild = storage.find((v) => v.name === "m_cols");
+            cols = parseTreeInt(mColsChild?.value);
+        }
+
+        // Navigate m_data → array for data pointer
+        const mDataChild = storage.find((v) => v.name === "m_data");
+        let dataPtr: string | null = null;
+        if (mDataChild?.variablesReference) {
+            const mData = await expand(mDataChild.variablesReference);
+            logger.debug(
+                `[getEigenInfoFromTree] m_data children: ` +
+                mData.map(v => `${v.name}=${v.value ?? "?"}(mr=${v.memoryReference ?? "none"})`).join(", ")
+            );
+            const arrayChild = mData.find((v) => v.name === "array");
+            if (arrayChild?.memoryReference) {
+                dataPtr = arrayChild.memoryReference;
+            } else if (arrayChild?.value) {
+                const m = arrayChild.value.match(/0x[0-9a-fA-F]+/);
+                dataPtr = m?.[0] ?? null;
+            }
+        } else if (mDataChild?.value) {
+            // m_data may be a pointer value directly
+            const m = mDataChild.value.match(/0x[0-9a-fA-F]+/);
+            dataPtr = m?.[0] ?? null;
+        }
+
+        logger.debug(`[getEigenInfoFromTree] rows=${rows} cols=${cols} dataPtr=${dataPtr}`);
+        return { rows, cols, dataPtr };
+    } catch {
+        return { rows: 0, cols: 0, dataPtr: null };
+    }
+}
+
+function parseTreeInt(value: string | undefined): number {
+    if (!value) { return 0; }
+    const m = value.match(/(-?\d+)/);
+    return m ? parseInt(m[1]) : 0;
 }

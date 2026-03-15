@@ -17,10 +17,12 @@ import * as vscode from "vscode";
 import { VariableInfo } from "../../../../IDebugAdapter";
 import { PlotData } from "../../../../../viewers/viewerTypes";
 import { ILibPlotProvider } from "../../../../ILibProviders";
+import { logger } from "../../../../../log/logger";
 import {
     readMemoryChunked,
     getVectorDataPointer,
     getContainerSize,
+    getVectorSizeFromChildren,
     tryGetDataPointer,
 } from "../../debugger";
 import { cppTypeToDtype, typedBufferToNumbers, computeStats } from "../utils";
@@ -92,16 +94,30 @@ export class StdPlotProvider implements ILibPlotProvider {
         info: VariableInfo
     ): Promise<PlotData | null> {
         const typeStr = info.typeName ?? info.type;
+        logger.debug(`[StdPlot] ${varName}: typeStr="${typeStr}" variablesReference=${info.variablesReference}`);
 
-        // ── Step 1: resolve element type and count ────────────────────────────
+        // ── Step 1: resolve element type and count ────────────────────────────────────
         let elementType = "";
         let size = 0;
 
         const vec = is1DVector(typeStr);
+        logger.debug(`[StdPlot] ${varName}: is1DVector -> is1D=${vec.is1D} elementType="${vec.elementType}"`);
         if (vec.is1D) {
             elementType = vec.elementType;
             // Dynamic size: evaluate .size()
             size = await getContainerSize(session, varName, info.frameId);
+            // Fallback: expression evaluation unavailable (e.g. LLDB on Windows
+            // with PDB symbols — all evaluations return null and scope value
+            // reports "size=0"). Count [N]-named children from the variables tree.
+            if (size <= 0 && (info.variablesReference ?? 0) > 0) {
+                const dtype0 = cppTypeToDtype(elementType);
+                size = await getVectorSizeFromChildren(
+                    session,
+                    info.variablesReference!,
+                    bytesPerDtype(dtype0)
+                );
+                logger.debug(`[StdPlot] ${varName}: getVectorSizeFromChildren -> ${size}`);
+            }
         } else {
             const arr = is1DStdArray(typeStr);
             if (arr.is1D) {
@@ -117,6 +133,7 @@ export class StdPlotProvider implements ILibPlotProvider {
         }
 
         if (size <= 0 || !elementType) {
+            logger.debug(`[StdPlot] ${varName}: size=${size} elementType="${elementType}" -> early return null`);
             return null;
         }
 
@@ -125,13 +142,16 @@ export class StdPlotProvider implements ILibPlotProvider {
 
         // ── Step 2: data pointer ──────────────────────────────────────────────
         const dataPtr = await getDataPointer(session, varName, info);
+        logger.debug(`[StdPlot] ${varName}: dataPtr=${dataPtr}`);
         if (!dataPtr) {
             return null;
         }
 
         // ── Step 3: read memory ───────────────────────────────────────────────
+        logger.debug(`[StdPlot] ${varName}: reading ${totalBytes} bytes (dtype=${dtype}, size=${size})`);
         const buffer = await readMemoryChunked(session, dataPtr, totalBytes);
         if (!buffer) {
+            logger.debug(`[StdPlot] ${varName}: readMemoryChunked returned null`);
             return null;
         }
 

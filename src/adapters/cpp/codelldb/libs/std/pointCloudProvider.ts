@@ -26,8 +26,10 @@ import {
     readMemoryChunked,
     getVectorDataPointer,
     getContainerSize,
+    getVectorSizeFromChildren,
     tryGetDataPointer,
 } from "../../debugger";
+import { logger } from "../../../../../log/logger";
 import { computeBounds } from "../utils";
 import { isPoint3Vector, isPoint3StdArray } from "./stdUtils";
 
@@ -119,6 +121,15 @@ export class StdPointCloudProvider implements ILibPointCloudProvider {
         if (vec.isPoint3) {
             isDouble = vec.isDouble;
             pointCount = await getContainerSize(session, varName, info.frameId);
+            if (pointCount <= 0 && (info.variablesReference ?? 0) > 0) {
+                const stride = vec.isDouble ? 24 : 12;
+                pointCount = await getVectorSizeFromChildren(
+                    session,
+                    info.variablesReference!,
+                    stride
+                );
+                logger.debug(`[StdPC] ${varName}: getVectorSizeFromChildren -> ${pointCount}`);
+            }
         } else {
             const arr = isPoint3StdArray(typeStr);
             if (arr.isPoint3) {

@@ -109,10 +109,21 @@ export class QtPlotProvider implements ILibPlotProvider {
         const frameId = info.frameId;
 
         // ── Step 1: element count ─────────────────────────────────────────
-        let count = await getContainerSize(session, varName, frameId);
-        if (count <= 0 && (info.variablesReference ?? 0) > 0) {
-            // cppvsdbg cannot evaluate member function calls — fall back to tree
+        // Prefer the Qt d-ptr tree walk: it reads the QArrayData.size field
+        // directly and avoids parseSizeFromValue misparsing "{d:0x...}" as 1.
+        let count = 0;
+        if ((info.variablesReference ?? 0) > 0) {
             count = await getQContainerSize(session, info.variablesReference!);
+        }
+        // If the tree walk returned the sentinel 1 (LLDB synthetic children
+        // detected), or if it genuinely returned 0, prefer the indexedVariables
+        // hint from the DAP scope enumeration — CodeLLDB sets this for QList/QVector.
+        if ((count <= 1) && (info.indexedVariables ?? 0) > 0) {
+            logger.debug(`QtPlotProvider: using indexedVariables=${info.indexedVariables} as count (treeWalk=${count})`);
+            count = info.indexedVariables!;
+        }
+        if (count <= 0) {
+            count = await getContainerSize(session, varName, frameId);
         }
         if (count <= 0) {
             logger.warn(`QtPlotProvider: size() returned 0 for ${varName}`);

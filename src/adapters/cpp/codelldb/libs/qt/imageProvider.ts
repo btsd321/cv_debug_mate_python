@@ -78,7 +78,8 @@ async function evalInt(
 /**
  * Try to obtain the number of bytes used by the QImage pixel buffer.
  * Qt6 prefers sizeInBytes(), Qt5 uses byteCount().
- * Falls back to width * height * bpp if both evaluations fail.
+ * Falls back to d->nbytes (direct field access) when method calls fail (MSVC PDB).
+ * Falls back to width * height * bpp if everything else fails.
  */
 async function getQImageByteCount(
     session: vscode.DebugSession,
@@ -90,12 +91,16 @@ async function getQImageByteCount(
         const n = await evalInt(session, expr, frameId);
         if (n !== null && n > 0) { return n; }
     }
+    // d-ptr field fallback — works in CodeLLDB when method calls are unavailable
+    const nbytes = await evalInt(session, `${varName}.d->nbytes`, frameId);
+    if (nbytes !== null && nbytes > 0) { return nbytes; }
     return fallback;
 }
 
 /**
- * Build expressions to obtain bits() pointer for CodeLLDB.
- * LLDB returns raw pointer values without needing (long long) casts.
+ * Build expressions to obtain the pixel data pointer for CodeLLDB.
+ * Tries member function bits() first; falls back to direct d-ptr field access
+ * (d->data) for MSVC-PDB-only builds where LLDB cannot invoke methods.
  */
 function bitsPointerExprs(
     _session: vscode.DebugSession,
@@ -103,7 +108,9 @@ function bitsPointerExprs(
 ): string[] {
     return [
         `${varName}.bits()`,
+        `${varName}.d->data`,
         `reinterpret_cast<long long>(${varName}.bits())`,
+        `reinterpret_cast<long long>(${varName}.d->data)`,
     ];
 }
 
@@ -190,6 +197,23 @@ export class QtImageProvider implements ILibImageProvider {
             fmt    = await evalInt(session, `(int)${varName}.format()`, frameId)
                   ?? await evalInt(session, `${varName}.format()`, frameId);
             logger.debug(`QImage expr-eval: ${width}x${height} fmt=${fmt}`);
+        }
+
+        // ── Second fallback: d-ptr field access ──────────────────────────
+        // In CodeLLDB with MSVC-PDB-only builds, member function calls often
+        // fail but struct field access through the d-ptr still works.
+        if (width === null || height === null || fmt === null) {
+            if (width === null) {
+                width = await evalInt(session, `${varName}.d->width`, frameId);
+            }
+            if (height === null) {
+                height = await evalInt(session, `${varName}.d->height`, frameId);
+            }
+            if (fmt === null) {
+                fmt = await evalInt(session, `(int)${varName}.d->format`, frameId)
+                   ?? await evalInt(session, `${varName}.d->format`, frameId);
+            }
+            logger.debug(`QImage d-ptr field-access: ${width}x${height} fmt=${fmt}`);
         }
 
         if (width === null || height === null || fmt === null) {

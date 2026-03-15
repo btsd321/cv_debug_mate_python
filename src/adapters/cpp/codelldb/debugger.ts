@@ -22,6 +22,7 @@
 
 import * as vscode from "vscode";
 import { VariableInfo } from "../../IDebugAdapter";
+import { logger } from "../../../log/logger";
 
 // ── Re-export shared utilities ────────────────────────────────────────────
 
@@ -38,6 +39,7 @@ import {
     getCurrentFrameId,
     detectCvMatFromChildren,
     isValidMemoryReference,
+    parseSizeFromValue,
 } from "../shared/debuggerBase";
 
 // ── Evaluate context ──────────────────────────────────────────────────────
@@ -116,11 +118,15 @@ export async function getVariablesInScope(
             variablesReference: localScopeRef,
         });
 
-        const raw: { name: string; type: string; variablesReference: number }[] =
+        const raw: { name: string; type: string; variablesReference: number; indexedVariables?: number; namedVariables?: number }[] =
             varsResp?.variables ?? [];
 
         const resolved = await Promise.all(
             raw.map(async (v) => {
+                // Log raw DAP fields for Qt / STL container types to capture indexedVariables.
+                if (/Q(?:List|Vector|Polygon)|std::(?:vector|array)/.test(v.type ?? "")) {
+                    logger.debug(`[getVariablesInScope] raw DAP: name="${v.name}" varRef=${v.variablesReference} indexedVariables=${v.indexedVariables ?? "(none)"} namedVariables=${v.namedVariables ?? "(none)"}`);
+                }
                 let typeName = v.type ?? "";
                 // CodeLLDB may omit type for struct/class variables.
                 // First attempt: evaluate with "watch" context — r.type may carry it.
@@ -147,6 +153,7 @@ export async function getVariablesInScope(
                     name: v.name,
                     type: typeName,
                     variablesReference: v.variablesReference,
+                    indexedVariables: v.indexedVariables,
                     frameId,
                 };
             })
@@ -241,6 +248,20 @@ export function build3DDataPointerExpressions(
 // ── Container size ────────────────────────────────────────────────────────
 
 /**
+ * Parse an integer from an LLDB evaluate result.
+ * CodeLLDB prepends type info to results: "(unsigned long) $0 = 100".
+ * Falls back to plain `parseInt` for other formats (e.g. GDB-style "100").
+ */
+function parseLldbInteger(result: string | null): number {
+    if (!result) { return NaN; }
+    const direct = parseInt(result.trim());
+    if (!isNaN(direct)) { return direct; }
+    // LLDB format: "(type) $n = value" — extract the value after " = "
+    const m = result.match(/=\s*(-?\d+)/);
+    return m ? parseInt(m[1]) : NaN;
+}
+
+/**
  * Evaluate `.size()` on a container variable using LLDB-compatible expressions.
  * Includes STL internal-field fallbacks for cases where LLDB cannot call
  * member functions (MSVC-STL, libstdc++, libc++ layouts).
@@ -263,12 +284,59 @@ export async function getContainerSize(
     ];
     for (const expr of exprs) {
         const res = await evaluateExpression(session, expr, frameId);
-        const n = parseInt(res ?? "");
+        logger.debug(`[getContainerSize] expr=${expr} -> ${JSON.stringify(res)}`);
+        const n = parseLldbInteger(res);
         if (!isNaN(n) && n >= 0 && n < 1_000_000_000) {
+            logger.debug(`[getContainerSize] ${varName} size=${n}`);
             return n;
         }
     }
+    // ── Fallback: read value string from scope variables list ────────────────
+    // Expression evaluation may be unavailable (e.g. LLDB on Windows with PDB
+    // symbols). The DAP variables tree still works and CodeLLDB reports the
+    // vector's summary as "size=N { ... }" which parseSizeFromValue handles.
+    const sizeFromValue = await getSizeFromScopeValue(session, varName, frameId);
+    if (sizeFromValue > 0) {
+        logger.debug(`[getContainerSize] ${varName} size from scope value=${sizeFromValue}`);
+        return sizeFromValue;
+    }
+
+    logger.debug(`[getContainerSize] all exprs failed for ${varName}, returning 0`);
     return 0;
+}
+
+/**
+ * Read the variable's `value` summary string from the parent scope's
+ * variables list and parse the element count from it.
+ *
+ * Used when expression evaluation is unavailable (e.g. LLDB on Windows with
+ * MSVC PDB symbols). CodeLLDB reports std::vector as "size=N { ... }".
+ */
+async function getSizeFromScopeValue(
+    session: vscode.DebugSession,
+    varName: string,
+    frameId?: number
+): Promise<number> {
+    try {
+        const resolvedFrame = frameId ?? (await getCurrentFrameId(session));
+        const scopesResp = await session.customRequest("scopes", { frameId: resolvedFrame });
+        const localScopeRef: number | undefined =
+            scopesResp?.scopes?.[0]?.variablesReference;
+        if (localScopeRef == null) { return 0; }
+
+        const varsResp = await session.customRequest("variables", {
+            variablesReference: localScopeRef,
+        });
+        const match = (varsResp?.variables ?? []).find(
+            (v: { name: string }) => v.name === varName
+        );
+        if (!match?.value) { return 0; }
+
+        logger.debug(`[getSizeFromScopeValue] ${varName} value="${match.value}"`);
+        return parseSizeFromValue(match.value);
+    } catch {
+        return 0;
+    }
 }
 
 // ── std::vector data pointer ─────────────────────────────────────────────
@@ -291,13 +359,38 @@ export async function getVectorDataPointer(
             const varsResp = await session.customRequest("variables", {
                 variablesReference,
             });
-            const firstElem = (varsResp?.variables ?? []).find(
-                (v: { name: string }) => v.name === "[0]"
+            let children: { name: string; memoryReference?: string; variablesReference?: number }[] =
+                varsResp?.variables ?? [];
+            logger.debug(
+                `[getVectorDataPointer] ${varName} variablesRef=${variablesReference} ` +
+                `children=[${children.map(c => `${c.name}(mr=${c.memoryReference ?? "none"})`).join(", ")}]`
+            );
+
+            // CodeLLDB on Windows/MSVC wraps the actual elements inside a
+            // synthetic "[raw]" child — expand it one more level.
+            if (children.length === 1 && children[0].name === "[raw]" &&
+                (children[0].variablesReference ?? 0) > 0) {
+                const rawRef = children[0].variablesReference!;
+                const rawResp = await session.customRequest("variables", {
+                    variablesReference: rawRef,
+                });
+                children = rawResp?.variables ?? [];
+                logger.debug(
+                    `[getVectorDataPointer] ${varName} [raw] children=[` +
+                    `${children.map(c => `${c.name}(mr=${c.memoryReference ?? "none"})`).join(", ")}]`
+                );
+            }
+
+            // "[0]" — vector/C-array first element (most debuggers)
+            // "_Elems" — MSVC STL std::array<T,N> internal storage field
+            const firstElem = children.find(
+                (v) => v.name === "[0]" || v.name === "_Elems"
             );
             if (
                 firstElem?.memoryReference &&
                 isValidMemoryReference(firstElem.memoryReference)
             ) {
+                logger.debug(`[getVectorDataPointer] ${varName} using ${firstElem.name}.memoryReference=${firstElem.memoryReference}`);
                 return firstElem.memoryReference;
             }
         } catch {
@@ -306,5 +399,146 @@ export async function getVectorDataPointer(
     }
 
     const expressions = buildDataPointerExpressions(varName);
-    return tryGetDataPointer(session, expressions, frameId);
+    const ptrFromEval = await tryGetDataPointer(session, expressions, frameId);
+    logger.debug(`[getVectorDataPointer] ${varName} fallback evaluate -> ${ptrFromEval}`);
+    if (ptrFromEval) { return ptrFromEval; }
+
+    // Last resort: MSVC STL internal layout via variables tree
+    // ([raw] → _Mypair → _Myval2 → _Myfirst)
+    const msvc = await resolveMsvcVectorPtrs(session, variablesReference);
+    logger.debug(`[getVectorDataPointer] ${varName} MSVC layout -> firstPtr=${msvc?.firstPtr ?? "null"}`);
+    return msvc?.firstPtr ?? null;
+}
+
+// ── MSVC STL internal layout helper ─────────────────────────────────────
+
+type MsvcVectorPtrs = { firstPtr: string; lastPtr: string };
+
+/**
+ * Navigate the DAP variables tree along the MSVC STL std::vector layout:
+ *   variablesReference → [raw] → _Mypair → _Myval2 → { _Myfirst, _Mylast }
+ *
+ * Returns the hex pointer strings from `_Myfirst` and `_Mylast` value fields,
+ * or null if the layout is not recognised.
+ *
+ * Used when expression evaluation is unavailable (LLDB on Windows + MSVC PDB).
+ */
+async function resolveMsvcVectorPtrs(
+    session: vscode.DebugSession,
+    variablesReference: number
+): Promise<MsvcVectorPtrs | null> {
+    const expand = async (ref: number) => {
+        const r = await session.customRequest("variables", { variablesReference: ref });
+        return (r?.variables ?? []) as { name: string; value?: string; variablesReference?: number }[];
+    };
+
+    try {
+        const top = await expand(variablesReference);
+        const rawChild = top.find((c) => c.name === "[raw]");
+        if (!rawChild?.variablesReference) { return null; }
+
+        const rawChildren = await expand(rawChild.variablesReference);
+        const mypair = rawChildren.find((c) => c.name === "_Mypair");
+        if (!mypair?.variablesReference) { return null; }
+
+        const mypairChildren = await expand(mypair.variablesReference);
+        const myval2 = mypairChildren.find((c) => c.name === "_Myval2");
+        if (!myval2?.variablesReference) { return null; }
+
+        const myval2Children = await expand(myval2.variablesReference);
+        logger.debug(
+            `[resolveMsvcVectorPtrs] _Myval2 children: ` +
+            myval2Children.map((c) => `${c.name}=${c.value ?? "?"}`).join(", ")
+        );
+
+        const myfirst = myval2Children.find((c) => c.name === "_Myfirst");
+        const mylast  = myval2Children.find((c) => c.name === "_Mylast");
+        if (!myfirst?.value || !mylast?.value) { return null; }
+
+        const firstHex = myfirst.value.match(/0x[0-9a-fA-F]+/)?.[0];
+        const lastHex  = mylast.value.match(/0x[0-9a-fA-F]+/)?.[0];
+        if (!firstHex || !lastHex) { return null; }
+
+        return { firstPtr: firstHex, lastPtr: lastHex };
+    } catch {
+        return null;
+    }
+}
+
+// ── Vector size from children ────────────────────────────────────────────
+
+/**
+ * Determine the element count of a std::vector via the DAP variables tree.
+ *
+ * Strategy (in order):
+ *   1. If the top-level children contain `[N]`-named entries → count them
+ *      (or use DAP `totalCount` if available).
+ *   2. If the only child is `[raw]` → expand it and try the same.
+ *   3. If `[raw]` contains `_Mypair` (MSVC STL internal layout) → navigate
+ *      to `_Myval2._Myfirst` / `_Mylast` and compute size from pointer diff.
+ *
+ * `elementByteSize` is required for strategy 3 (pointer-difference division).
+ */
+export async function getVectorSizeFromChildren(
+    session: vscode.DebugSession,
+    variablesReference: number,
+    elementByteSize = 1
+): Promise<number> {
+    try {
+        const resp = await session.customRequest("variables", {
+            variablesReference,
+        });
+        let children: { name: string; variablesReference?: number }[] = resp?.variables ?? [];
+        logger.debug(
+            `[getVectorSizeFromChildren] variablesRef=${variablesReference} ` +
+            `totalCount=${resp?.totalCount ?? "n/a"} ` +
+            `firstPageCount=${children.length} ` +
+            `names=[${children.slice(0, 10).map((c) => c.name).join(", ")}${children.length > 10 ? ", ..." : ""}]`
+        );
+
+        // ── Strategy 1: direct [N] children ──────────────────────────────────
+        if (typeof resp?.totalCount === "number" && resp.totalCount > 0) {
+            return resp.totalCount;
+        }
+        const direct = children.filter((c) => /^\[\d+\]$/.test(c.name)).length;
+        if (direct > 0) { return direct; }
+
+        // ── Strategy 2 / 3: expand [raw] ─────────────────────────────────────
+        if (children.length === 1 && children[0].name === "[raw]" &&
+            (children[0].variablesReference ?? 0) > 0) {
+            const rawRef = children[0].variablesReference!;
+            const rawResp = await session.customRequest("variables", {
+                variablesReference: rawRef,
+            });
+            children = rawResp?.variables ?? [];
+            logger.debug(
+                `[getVectorSizeFromChildren] [raw] totalCount=${rawResp?.totalCount ?? "n/a"} ` +
+                `firstPageCount=${children.length} ` +
+                `names=[${children.slice(0, 10).map((c) => c.name).join(", ")}${children.length > 10 ? ", ..." : ""}]`
+            );
+
+            if (typeof rawResp?.totalCount === "number" && rawResp.totalCount > 0) {
+                return rawResp.totalCount;
+            }
+            const indexed = children.filter((c) => /^\[\d+\]$/.test(c.name)).length;
+            if (indexed > 0) { return indexed; }
+
+            // Strategy 3: _Mypair layout (MSVC STL)
+            const msvc = await resolveMsvcVectorPtrs(session, variablesReference);
+            if (msvc) {
+                const first = BigInt(msvc.firstPtr);
+                const last  = BigInt(msvc.lastPtr);
+                const count = Number(last >= first ? (last - first) / BigInt(elementByteSize) : 0n);
+                logger.debug(
+                    `[getVectorSizeFromChildren] MSVC ptrs first=${msvc.firstPtr} ` +
+                    `last=${msvc.lastPtr} elementByteSize=${elementByteSize} -> count=${count}`
+                );
+                return count;
+            }
+        }
+
+        return 0;
+    } catch {
+        return 0;
+    }
 }

@@ -27,7 +27,8 @@ import { PlotData } from "../../../../../viewers/viewerTypes";
 import { ILibPlotProvider } from "../../../../ILibProviders";
 import { readMemoryChunked } from "../../debugger";
 import { typedBufferToNumbers, computeStats } from "../utils";
-import { eigenDtype, bytesPerEigenDtype, evalEigenDim, getEigenDataPointer } from "./eigenUtils";
+import { eigenDtype, bytesPerEigenDtype, evalEigenDim, getEigenDataPointer, getEigenInfoFromTree } from "./eigenUtils";
+import { logger } from "../../../../../log/logger";
 
 // ── Provider ──────────────────────────────────────────────────────────────
 
@@ -49,11 +50,37 @@ export class EigenPlotProvider implements ILibPlotProvider {
         // round of LLDB evaluate calls that may fail on Windows/LLDB).
         let rows: number;
         let cols: number;
+        let treeDataPtr: string | null = null;
         if (info.shape && info.shape.length >= 2 && info.shape[0] > 0 && info.shape[1] > 0) {
             [rows, cols] = info.shape;
         } else {
             rows = await evalEigenDim(session, varName, "rows", frameId);
             cols = await evalEigenDim(session, varName, "cols", frameId);
+        }
+        logger.debug(`[EigenPlot] ${varName}: rows=${rows} cols=${cols} from eval`);
+
+        // Fallback: variables tree (LLDB on Windows/MSVC — all evaluations return null)
+        if ((rows <= 0 || cols <= 0) && (info.variablesReference ?? 0) > 0) {
+            // Derive compile-time cols from type string.
+            // Full template:  Eigen::Matrix<T, Rows, Cols, ...>
+            // Shorthand:      VectorXd/VectorXf  → cols = 1
+            //                 RowVectorXd/RowVectorXf → rows = 1, cols = dynamic
+            let compiledCols = -1;
+            const tplMatch = typeStr.match(
+                /Eigen::Matrix\s*<[^,]+,\s*[^,]+,\s*(-?\d+)/
+            );
+            if (tplMatch) {
+                compiledCols = parseInt(tplMatch[1]);
+            } else if (/\bVector(X[df]|\d+[df]?)\b/.test(typeStr)) {
+                compiledCols = 1; // VectorXd / VectorXf / Vector4d …
+            }
+            const treeInfo = await getEigenInfoFromTree(
+                session, info.variablesReference!, isNaN(compiledCols) ? -1 : compiledCols
+            );
+            if (treeInfo.rows > 0) { rows = treeInfo.rows; }
+            if (treeInfo.cols > 0) { cols = treeInfo.cols; }
+            treeDataPtr = treeInfo.dataPtr;
+            logger.debug(`[EigenPlot] ${varName}: rows=${rows} cols=${cols} from tree`);
         }
 
         if (rows <= 0 || cols <= 0) {
@@ -66,7 +93,8 @@ export class EigenPlotProvider implements ILibPlotProvider {
         const totalBytes = size * bpe;
 
         // ── Step 2: data pointer ──────────────────────────────────────────────
-        const dataPtr = await getEigenDataPointer(session, varName, frameId);
+        const dataPtr = treeDataPtr ?? await getEigenDataPointer(session, varName, frameId);
+        logger.debug(`[EigenPlot] ${varName}: dataPtr=${dataPtr}`);
         if (!dataPtr) {
             return null;
         }

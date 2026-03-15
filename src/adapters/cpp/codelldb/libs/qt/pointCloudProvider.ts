@@ -79,9 +79,21 @@ export class QtPointCloudProvider implements ILibPointCloudProvider {
         const frameId = info.frameId;
 
         // ── Step 1: element count ─────────────────────────────────────────
-        let count = await getContainerSize(session, varName, frameId);
-        if (count <= 0 && (info.variablesReference ?? 0) > 0) {
+        // Prefer the Qt d-ptr tree walk — avoids parseSizeFromValue misparsing
+        // "{d:0x...}" (CodeLLDB QVector summary) as size=1.
+        let count = 0;
+        if ((info.variablesReference ?? 0) > 0) {
             count = await getQContainerSize(session, info.variablesReference!);
+        }
+        // If the tree walk returned the sentinel 1 (LLDB synthetic children
+        // detected), or if it genuinely returned 0, prefer the indexedVariables
+        // hint from the DAP scope enumeration — CodeLLDB sets this for QList/QVector.
+        if ((count <= 1) && (info.indexedVariables ?? 0) > 0) {
+            logger.debug(`QtPointCloudProvider: using indexedVariables=${info.indexedVariables} as count (treeWalk=${count})`);
+            count = info.indexedVariables!;
+        }
+        if (count <= 0) {
+            count = await getContainerSize(session, varName, frameId);
         }
         if (count <= 0) {
             logger.warn(`QtPointCloudProvider: size() returned 0 for ${varName}`);
