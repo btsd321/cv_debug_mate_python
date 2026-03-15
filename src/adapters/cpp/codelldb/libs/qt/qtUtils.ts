@@ -545,6 +545,20 @@ export async function getQVectorDataPointer(
         } catch { /* fall through */ }
     }
 
+    // ── Case C: Qt6 QArrayDataPointer<T> layout ──────────────────────────
+    // Qt6 QList<T>: top-level d is QArrayDataPointer<T> with children:
+    //   { d (QArrayData*), ptr (T*), size (int) }
+    // ptr.memoryReference is directly the address of the first element.
+    const ptrVar6 = dVars.find(v => v.name === "ptr");
+    if (ptrVar6) {
+        const dataAddr = ptrVar6.memoryReference
+            ?? ptrVar6.value?.match(/^(0x[0-9a-fA-F]+)/)?.[1];
+        if (dataAddr && isValidMemoryReference(dataAddr)) {
+            logger.debug(`getQVectorDataPointer: Qt6 QArrayDataPointer ptr=${dataAddr}`);
+            return { ptr: dataAddr, slotStride: 0 };
+        }
+    }
+
     } // end dVarRef > 0 block
 
     logger.debug(`getQVectorDataPointer: could not resolve via tree`);
@@ -605,11 +619,46 @@ type DapVar = {
     variablesReference?: number;
 };
 
+/** QImage::Format enum name → integer value (stable across Qt5 / Qt6). */
+const QIMAGE_FORMAT_NAME_MAP: Record<string, number> = {
+    Format_Invalid:                  0,
+    Format_Mono:                     1,
+    Format_MonoLSB:                  2,
+    Format_Indexed8:                 3,
+    Format_RGB32:                    4,
+    Format_ARGB32:                   5,
+    Format_ARGB32_Premultiplied:     6,
+    Format_RGB16:                    7,
+    Format_ARGB8565_Premultiplied:   8,
+    Format_RGB666:                   9,
+    Format_ARGB6666_Premultiplied:  10,
+    Format_RGB555:                  11,
+    Format_ARGB8555_Premultiplied:  12,
+    Format_RGB888:                  13,
+    Format_RGB444:                  14,
+    Format_ARGB4444_Premultiplied:  15,
+    Format_RGBX8888:                16,
+    Format_RGBA8888:                17,
+    Format_RGBA8888_Premultiplied:  18,
+    Format_BGR30:                   19,
+    Format_A2BGR30_Premultiplied:   20,
+    Format_RGB30:                   21,
+    Format_A2RGB30_Premultiplied:   22,
+    Format_Alpha8:                  23,
+    Format_Grayscale8:              24,
+    Format_RGBX64:                  25,
+    Format_RGBA64:                  26,
+    Format_RGBA64_Premultiplied:    27,
+    Format_Grayscale16:             28,
+    Format_BGR888:                  29,
+};
+
 /**
  * Parse a QImage::Format integer from varied debugger representations:
  *   - Plain integer:                   "24"
  *   - Enum label with value in parens: "QImage::Format_Grayscale8 (24)"
  *   - Hex:                             "0x18"
+ *   - Bare enum name (GDB + Qt6):      "QImage::Format_RGB888"
  */
 export function parseQImageFormat(valueStr: string): number | null {
     if (!valueStr) { return null; }
@@ -625,6 +674,12 @@ export function parseQImageFormat(valueStr: string): number | null {
     // Hex
     if (/^0x[0-9a-fA-F]+$/i.test(valueStr.trim())) {
         return parseInt(valueStr.trim(), 16);
+    }
+    // Bare enum name: "QImage::Format_RGB888" or "Format_RGB888" (GDB + Qt6)
+    const nameMatch = valueStr.match(/Format_\w+/);
+    if (nameMatch) {
+        const val = QIMAGE_FORMAT_NAME_MAP[nameMatch[0]];
+        if (val !== undefined) { return val; }
     }
     return null;
 }

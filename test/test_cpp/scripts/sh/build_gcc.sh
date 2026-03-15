@@ -14,12 +14,22 @@ else
     GENERATOR="Unix Makefiles"
 fi
 
+VCPKG_ROOT="${HOME}/Library/vcpkg"
+VCPKG_TOOLCHAIN="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+
+# Remove stale cache so CMAKE_TOOLCHAIN_FILE takes effect
+if [[ -f "${BUILD_DIR}/CMakeCache.txt" ]]; then
+    echo "[build_gcc] Removing stale CMakeCache.txt ..."
+    rm -f "${BUILD_DIR}/CMakeCache.txt"
+fi
+
 echo "[build_gcc] Configuring with ${GENERATOR}..."
 cmake -S "${SOURCE_DIR}" -B "${BUILD_DIR}" \
     -G "${GENERATOR}" \
     -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_C_COMPILER=gcc \
     -DCMAKE_CXX_COMPILER=g++ \
+    -DCMAKE_TOOLCHAIN_FILE="${VCPKG_TOOLCHAIN}" \
     -DWITH_OPENCV=ON \
     -DWITH_EIGEN=ON
 
