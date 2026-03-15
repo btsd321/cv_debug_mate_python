@@ -136,16 +136,6 @@ or use the Command Palette (`Ctrl+Shift+P`) → **MatrixViewer: View by MatrixVi
 1. Download `.vsix` file
 2. Extensions view (`Ctrl+Shift+X`) → `...` → "Install from VSIX..."
 
-### From Source
-
-```bash
-git clone https://github.com/dull-bird/cv_debug_mate_python
-cd cv_debug_mate_python
-npm install
-npm run compile
-# Press F5 to run in Extension Development Host
-```
-
 ---
 
 ## 📋 Requirements

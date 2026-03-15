@@ -136,16 +136,6 @@
 1. 下载 `.vsix` 文件
 2. 扩展视图（`Ctrl+Shift+X`）→ `...` → "从 VSIX 安装..."
 
-### 从源码构建
-
-```bash
-git clone https://github.com/dull-bird/cv_debug_mate_python
-cd cv_debug_mate_python
-npm install
-npm run compile
-# 按 F5 在扩展开发宿主中运行
-```
-
 ---
 
 ## 📋 系统要求
