@@ -1,27 +1,42 @@
 /**
- * cppAdapter.ts — IDebugAdapter stub for C++ debug sessions.
+ * cppAdapter.ts — IDebugAdapter for C++ debug sessions.
  *
- * Handles sessions of type "cppdbg" (Microsoft C/C++ extension),
- * "lldb" (CodeLLDB), and "cppvsdbg" (Visual C++ on Windows).
- *
- * Current state: all fetch methods return null (not yet implemented).
- * Implement the TODO sections to add support for:
- *   - Eigen::Matrix / Eigen::Array → image, plot, pointcloud
- *   - cv::Mat                      → image
- *   - std::vector<T>               → plot
- *   - pcl::PointCloud              → pointcloud
- *
- * See docs/cpp-adapter.md for the planned implementation strategy.
+ * Routes to per-debugger implementations:
+ *   "cppdbg"   → gdb/      (GDB via Microsoft C/C++ extension)
+ *   "lldb"     → codelldb/ (CodeLLDB)
+ *   "cppvsdbg" → cppvsdbg/ (Visual C++ / vsdbg on Windows)
  */
 
 import * as vscode from "vscode";
 import { IDebugAdapter, VariableInfo, VisualizableKind } from "../IDebugAdapter";
 import { ImageData, PlotData, PointCloudData } from "../../viewers/viewerTypes";
 import { basicTypeDetect } from "./cppTypes";
-import { getVariablesInScope, getVariableInfo, evaluateExpression, isUsingLLDB } from "./cppDebugger";
-import { fetchCppImageData } from "./imageProvider";
-import { fetchCppPlotData } from "./plotProvider";
-import { fetchCppPointCloudData } from "./pointCloudProvider";
+
+// ── Per-debugger variable scope / evaluate ────────────────────────────────
+import {
+    getVariablesInScope as getVarsScopeGdb,
+    evaluateExpression as evaluateGdb,
+    getVariableInfo,
+} from "./gdb/debugger";
+import {
+    getVariablesInScope as getVarsScopeLldb,
+    evaluateExpression as evaluateLldb,
+} from "./codelldb/debugger";
+import {
+    getVariablesInScope as getVarsScopeMsvc,
+    evaluateExpression as evaluateMsvc,
+} from "./cppvsdbg/debugger";
+
+// ── Per-debugger data coordinators ────────────────────────────────────────
+import { fetchGdbImageData } from "./gdb/imageProvider";
+import { fetchGdbPlotData } from "./gdb/plotProvider";
+import { fetchGdbPointCloudData } from "./gdb/pointCloudProvider";
+import { fetchLldbImageData } from "./codelldb/imageProvider";
+import { fetchLldbPlotData } from "./codelldb/plotProvider";
+import { fetchLldbPointCloudData } from "./codelldb/pointCloudProvider";
+import { fetchMsvcImageData } from "./cppvsdbg/imageProvider";
+import { fetchMsvcPlotData } from "./cppvsdbg/plotProvider";
+import { fetchMsvcPointCloudData } from "./cppvsdbg/pointCloudProvider";
 
 export class CppAdapter implements IDebugAdapter {
     isSupportedSession(session: vscode.DebugSession): boolean {
@@ -37,7 +52,9 @@ export class CppAdapter implements IDebugAdapter {
     async getVariablesInScope(
         session: vscode.DebugSession
     ): Promise<VariableInfo[]> {
-        return getVariablesInScope(session);
+        if (session.type === "lldb") { return getVarsScopeLldb(session); }
+        if (session.type === "cppvsdbg") { return getVarsScopeMsvc(session); }
+        return getVarsScopeGdb(session);
     }
 
     async getVariableInfo(
@@ -45,6 +62,7 @@ export class CppAdapter implements IDebugAdapter {
         varName: string,
         frameId?: number
     ): Promise<VariableInfo | null> {
+        // getVariableInfo is identical across debuggers (re-exported from shared)
         const info = await getVariableInfo(session, varName, frameId);
         if (!info) {
             return null;
@@ -73,7 +91,7 @@ export class CppAdapter implements IDebugAdapter {
         // m_rows / m_cols are Eigen's internal DenseStorage members — accessible
         // even when LLDB cannot call C++ member functions.
         const internalProp = prop === "rows" ? "m_rows" : "m_cols";
-        const exprs = isUsingLLDB(session)
+        const exprs = session.type === "lldb"
             ? [
                 `${varName}.${prop}()`,
                 `(long long)${varName}.${prop}()`,
@@ -86,13 +104,24 @@ export class CppAdapter implements IDebugAdapter {
                 `(long long)${varName}.${prop}()`,
             ];
         for (const expr of exprs) {
-            const res = await evaluateExpression(session, expr, frameId);
+            const res = await this._evaluateExpression(session, expr, frameId);
             const n = parseInt(res ?? "");
             if (!isNaN(n) && n > 0 && n < 100_000_000) {
                 return n;
             }
         }
         return 0;
+    }
+
+    /** Route evaluateExpression to the correct per-debugger implementation. */
+    private _evaluateExpression(
+        session: vscode.DebugSession,
+        expr: string,
+        frameId?: number
+    ): Promise<string | null> {
+        if (session.type === "lldb") { return evaluateLldb(session, expr, frameId); }
+        if (session.type === "cppvsdbg") { return evaluateMsvc(session, expr, frameId); }
+        return evaluateGdb(session, expr, frameId);
     }
 
     // ── Type detection ────────────────────────────────────────────────────
@@ -124,7 +153,9 @@ export class CppAdapter implements IDebugAdapter {
         varName: string,
         info: VariableInfo
     ): Promise<ImageData | null> {
-        return fetchCppImageData(session, varName, info);
+        if (session.type === "lldb") { return fetchLldbImageData(session, varName, info); }
+        if (session.type === "cppvsdbg") { return fetchMsvcImageData(session, varName, info); }
+        return fetchGdbImageData(session, varName, info);
     }
 
     async fetchPlotData(
@@ -132,15 +163,18 @@ export class CppAdapter implements IDebugAdapter {
         varName: string,
         info: VariableInfo
     ): Promise<PlotData | null> {
-        return fetchCppPlotData(session, varName, info);
+        if (session.type === "lldb") { return fetchLldbPlotData(session, varName, info); }
+        if (session.type === "cppvsdbg") { return fetchMsvcPlotData(session, varName, info); }
+        return fetchGdbPlotData(session, varName, info);
     }
 
     async fetchPointCloudData(
         session: vscode.DebugSession,
         varName: string,
-        info: VariableInfo,
-        log?: (level: "DEBUG" | "INFO" | "WARN" | "ERROR", msg: string) => void
+        info: VariableInfo
     ): Promise<PointCloudData | null> {
-        return fetchCppPointCloudData(session, varName, info, log);
+        if (session.type === "lldb") { return fetchLldbPointCloudData(session, varName, info); }
+        if (session.type === "cppvsdbg") { return fetchMsvcPointCloudData(session, varName, info); }
+        return fetchGdbPointCloudData(session, varName, info);
     }
 }

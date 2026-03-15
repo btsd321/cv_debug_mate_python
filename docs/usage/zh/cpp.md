@@ -37,6 +37,12 @@
 | 编译器 | Clang/LLVM ≥ 14、GCC ≥ 11 或 MSVC 2022 |
 | 可选第三方库 | `OpenCV 4`、`Eigen3`、`PCL`——根据需要可视化的类型按需安装 |
 
+> **被调试程序链接的所有第三方库必须携带调试符号。**
+> GDB 和 LLDB 只有在库含有 DWARF 调试符号时才能访问成员函数、结构体字段和类型信息。
+> Ubuntu / Debian 系统包默认剥离调试符号。
+> 缺少调试符号时，Qt 容器（`QVector`、`QList`、`QImage`）等类型将回退到原始内存读取并弹出警告通知。
+> 建议安装对应的 `*-dbgsym` 包，或通过 vcpkg 从源码编译所有依赖（使用 `-DCMAKE_BUILD_TYPE=Debug`）。
+
 ---
 
 ## 支持的编译器与调试器
@@ -89,6 +95,25 @@ test\test_cpp\scripts\bat\build_llvm.bat
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 make -j$(nproc)
 ```
+
+> **第三方库同样必须携带 DWARF 调试符号。**
+> Ubuntu 系统 Qt / OpenCV / PCL 包默认剥离调试符号。两种解决方案：
+>
+> **方案 A — 安装系统调试符号包**（见[常见问题排查](#常见问题排查)）：
+> ```bash
+> sudo apt-get install libopencv-dev libopencv4.5-dbg     # OpenCV
+> sudo apt-get install libqt5gui5-dbgsym                  # Qt5（需先配置 ddebs 仓库）
+> ```
+>
+> **方案 B — 通过 vcpkg 从源码编译所有依赖**（推荐；Debug 模式默认保留调试符号）：
+> ```bash
+> export https_proxy=http://127.0.0.1:7890   # 按需设置代理
+> cd ~/Library/vcpkg
+> ./vcpkg install opencv4 eigen3 pcl qtbase --triplet x64-linux
+> cmake -B build -DCMAKE_BUILD_TYPE=Debug \
+>   -DCMAKE_TOOLCHAIN_FILE=$HOME/Library/vcpkg/scripts/buildsystems/vcpkg.cmake ..
+> make -j$(nproc)
+> ```
 
 ### MSVC + vsdbg（Windows）
 
@@ -373,5 +398,10 @@ CMAKE_CXX_FLAGS_DEBUG:STRING=-O0 -gdwarf-4 -fstandalone-debug
 
 该类型可能尚未被 Layer-1 快速检测识别。  
 → 使用**方式三（命令面板）**直接通过变量名可视化。
+
+### GDB 下 `QImage` 无法可视化（"Couldn't find method" / "There is no member named d"）
+
+系统 Qt 库未安装独立调试符号包，GDB 无法访问 `QImage` 的成员函数和私有成员。  
+扩展已内置基于内存布局的回退路径（无需调试符号即可读取像素数据），但安装调试符号包后访问更可靠。
 
 > 另请参阅：[C++ Windows CodeLLDB 配置指南](../../cpp-windows-codelldb-setup.md)，包含完整操作流程。

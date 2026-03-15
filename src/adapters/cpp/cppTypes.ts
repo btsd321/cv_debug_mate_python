@@ -24,6 +24,8 @@ const IMAGE_TYPE_PATTERNS = [
     /std::(?:__1::)?array\s*<\s*(?:class\s+)?std::(?:__1::)?array/,
     // C-style 2D/3D array: T[H][W] or T[H][W][C]
     /\[\s*\d+\s*\]\s*\[\s*\d+\s*\]/,
+    // Qt image: QImage (Qt5 / Qt6)
+    /\bQImage\b/,
 ];
 
 // POINTCLOUD checked before PLOT so std::vector<cv::Point3f> → pointcloud, not plot
@@ -32,6 +34,8 @@ const POINTCLOUD_TYPE_PATTERNS = [
     /\bopen3d::geometry::PointCloud\b/,
     // std::vector / std::array of cv::Point3f / Point3d
     /std::(?:__1::)?(?:vector|array)\s*<[^>]*cv::Point3/,
+    // Qt: QVector<QVector3D> or QList<QVector3D> (Qt5/Qt6)
+    /Q(?:Vector|List)\s*<\s*QVector3D\s*>/,
 ];
 
 const PLOT_TYPE_PATTERNS = [
@@ -42,6 +46,10 @@ const PLOT_TYPE_PATTERNS = [
     // C-style 1D numeric arrays: double[128], int[64], etc.
     // Exclude 2D arrays (T[H][W]) which are handled by IMAGE_TYPE_PATTERNS.
     /^(?!.*\[\s*\d+\s*\]\s*\[\s*\d+\s*\])[a-zA-Z_][a-zA-Z0-9_ ]*\s*\[\s*\d+\s*\]$/,
+    // Qt 1D / 2D numeric containers (Qt5/Qt6):
+    //   QVector<float>, QList<int>, QPolygonF, QVector<QVector2D>, QList<QVector2D>
+    /\bQ(?:Vector|List)\s*<[^>]+>/,
+    /\bQPolygonF\b/,
 ];
 
 // ── Layer-1 detection ─────────────────────────────────────────────────────

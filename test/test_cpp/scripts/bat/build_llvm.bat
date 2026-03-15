@@ -89,7 +89,7 @@ rem LLDB (used by CodeLLDB) can fully resolve C++ type information, including
 rem complex types like cv::Mat that are opaque under PDB/CodeView parsing.
 rem -fstandalone-debug embeds full type definitions instead of references,
 rem which is necessary when types come from MSVC-compiled third-party headers.
-cmake -S "%SOURCE_DIR%" -B "%BUILD_DIR%" -G "Ninja" -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_CXX_COMPILER=%CXX_COMPILER%" "-DCMAKE_RC_COMPILER=%RC_COMPILER_FWD%" -DWITH_OPENCV=ON -DWITH_EIGEN=ON "-DCMAKE_TOOLCHAIN_FILE=%CMAKE_TOOLCHAIN_FILE%" "-DOpenCV_ROOT=%VCPKG_ROOT%\installed\x64-windows\share\opencv" "-DEigen3_DIR=%VCPKG_ROOT%\installed\x64-windows\share\eigen3" "-DPCL_DIR=%VCPKG_ROOT%\installed\x64-windows\share\pcl" "-DCMAKE_CXX_FLAGS_DEBUG=-O0 -gdwarf-4 -fstandalone-debug"
+cmake -S "%SOURCE_DIR%" -B "%BUILD_DIR%" -G "Ninja" -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_CXX_COMPILER=%CXX_COMPILER%" "-DCMAKE_RC_COMPILER=%RC_COMPILER_FWD%" -DWITH_OPENCV=ON -DWITH_EIGEN=ON -DWITH_QT=ON "-DCMAKE_TOOLCHAIN_FILE=%CMAKE_TOOLCHAIN_FILE%" "-DOpenCV_ROOT=%VCPKG_ROOT%\installed\x64-windows\share\opencv" "-DEigen3_DIR=%VCPKG_ROOT%\installed\x64-windows\share\eigen3" "-DPCL_DIR=%VCPKG_ROOT%\installed\x64-windows\share\pcl" "-DQt5_DIR=%VCPKG_ROOT%\installed\x64-windows\lib\cmake\Qt5" "-DCMAKE_CXX_FLAGS_DEBUG=-O0 -gdwarf-4 -fstandalone-debug"
 
 if errorlevel 1 (
     echo [build_llvm] Configure FAILED.

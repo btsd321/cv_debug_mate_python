@@ -33,11 +33,13 @@ cmake -S "%SOURCE_DIR%" -B "%BUILD_DIR%" ^
     -DWITH_OPENCV=ON ^
     -DWITH_EIGEN=ON ^
     -DWITH_PCL=ON ^
+    -DWITH_QT=ON ^
     "-DCMAKE_GENERATOR_INSTANCE=%VS_INSTALL_DIR%" ^
     "-DCMAKE_TOOLCHAIN_FILE=%CMAKE_TOOLCHAIN_FILE%" ^
     "-DOpenCV_ROOT=%VCPKG_ROOT%\installed\x64-windows\share\opencv" ^
     "-DEigen3_DIR=%VCPKG_ROOT%\installed\x64-windows\share\eigen3" ^
-    "-DPCL_DIR=%VCPKG_ROOT%\installed\x64-windows\share\pcl"
+    "-DPCL_DIR=%VCPKG_ROOT%\installed\x64-windows\share\pcl" ^
+    "-DQt5_DIR=%VCPKG_ROOT%\installed\x64-windows\lib\cmake\Qt5"
 
 if errorlevel 1 (
     echo [build_msvc] CMake configure FAILED. Trying VS 2022...
@@ -49,11 +51,13 @@ if errorlevel 1 (
         -DWITH_OPENCV=ON ^
         -DWITH_EIGEN=ON ^
         -DWITH_PCL=ON ^
+        -DWITH_QT=ON ^
         "-DCMAKE_GENERATOR_INSTANCE=%VS_INSTALL_DIR%" ^
         "-DCMAKE_TOOLCHAIN_FILE=%CMAKE_TOOLCHAIN_FILE%" ^
         "-DOpenCV_ROOT=%VCPKG_ROOT%\installed\x64-windows\share\opencv" ^
         "-DEigen3_DIR=%VCPKG_ROOT%\installed\x64-windows\share\eigen3" ^
-        "-DPCL_DIR=%VCPKG_ROOT%\installed\x64-windows\share\pcl"
+        "-DPCL_DIR=%VCPKG_ROOT%\installed\x64-windows\share\pcl" ^
+        "-DQt5_DIR=%VCPKG_ROOT%\installed\x64-windows\lib\cmake\Qt5"
 )
 
 if errorlevel 1 (

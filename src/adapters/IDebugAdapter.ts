@@ -43,6 +43,13 @@ export interface VariableInfo {
     frameId?: number;
     /** DAP variablesReference (for tree expansion) */
     variablesReference?: number;
+    /**
+     * Number of indexed (array-element) children reported by the debugger.
+     * CodeLLDB / LLDB synthetic child providers set this for Qt / STL containers.
+     * Use as a last-resort count fallback when expression evaluation and tree
+     * walks both fail.
+     */
+    indexedVariables?: number;
 }
 
 // ── Adapter interface ─────────────────────────────────────────────────────
@@ -104,7 +111,6 @@ export interface IDebugAdapter {
     fetchPointCloudData(
         session: vscode.DebugSession,
         varName: string,
-        info: VariableInfo,
-        log?: (level: "DEBUG" | "INFO" | "WARN" | "ERROR", msg: string) => void
+        info: VariableInfo
     ): Promise<PointCloudData | null>;
 }

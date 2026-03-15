@@ -22,6 +22,8 @@
 Optional libraries (tests gracefully skipped if not found):
 - **OpenCV ≥ 4.x** — `cv::Mat`, `cv::Point3f` tests
 - **Eigen3 ≥ 3.x** — `Eigen::MatrixXd`, `Eigen::VectorXd` tests
+- **PCL ≥ 1.x** — `pcl::PointCloud` tests
+- **Qt5 ≥ 5.5** — `QImage`, `QVector`, `QPolygonF`, `QVector2D`, `QVector3D` tests
 
 ## Build
 
@@ -79,3 +81,14 @@ Output: `build_llvm/demo`
 | `cloud_xyz` *(OpenCV)* | `std::vector<cv::Point3f>` | Point Cloud |
 | `eigen_mat` *(Eigen)* | `Eigen::MatrixXd` | Image / Plot |
 | `eigen_vec` *(Eigen)* | `Eigen::VectorXd` | Plot (1D) |
+| `eigen_scatter` *(Eigen)* | `Eigen::MatrixXd` (300×2) | Plot (2D Scatter) |
+| `pcl_xyz` *(PCL)* | `pcl::PointCloud<pcl::PointXYZ>` | Point Cloud |
+| `pcl_xyz_rgb` *(PCL)* | `pcl::PointCloud<pcl::PointXYZRGB>` | Point Cloud |
+| `pcl_xyz_i` *(PCL)* | `pcl::PointCloud<pcl::PointXYZI>` | Point Cloud |
+| `qt_image_rgb` *(Qt5)* | `QImage` Format_RGB888 | Image (RGB) |
+| `qt_image_gray` *(Qt5)* | `QImage` Format_Grayscale8 | Image (grayscale) |
+| `qt_vec_plot` *(Qt5)* | `QVector<double>` | Plot (1D) |
+| `qt_list_plot` *(Qt5)* | `QList<float>` | Plot (1D) |
+| `qt_polygon` *(Qt5)* | `QPolygonF` | Plot (2D Scatter) |
+| `qt_vec2d` *(Qt5)* | `QVector<QVector2D>` | Plot (2D Scatter) |
+| `qt_vec3d` *(Qt5)* | `QVector<QVector3D>` | Point Cloud |

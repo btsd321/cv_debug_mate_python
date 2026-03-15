@@ -18,11 +18,16 @@
  *   pcl::PointCloud<pcl::PointXYZ>      → Point Cloud Viewer (XYZ)
  *   pcl::PointCloud<pcl::PointXYZRGB>   → Point Cloud Viewer (XYZ + RGB)
  *   pcl::PointCloud<pcl::PointXYZI>     → Point Cloud Viewer (XYZ + intensity)
+ *   QImage                              → Image Viewer (RGB888 / Grayscale8)
+ *   QVector<double> / QList<float>      → Plot Viewer  (1D)
+ *   QPolygonF / QVector<QVector2D>      → Plot Viewer  (2D Scatter)
+ *   QVector<QVector3D>                     → Point Cloud Viewer
  *
  * Dependencies (all optional — missing libs are guarded by #ifdef):
  *   OpenCV  ≥ 4.x   (HAVE_OPENCV)
  *   Eigen   ≥ 3.x   (HAVE_EIGEN)
  *   PCL     ≥ 1.x   (HAVE_PCL)
+ *   Qt5     ≥ 5.5   (HAVE_QT)
  */
 
 #include <cmath>
@@ -43,6 +48,15 @@
 #ifdef HAVE_PCL
 #  include <pcl/point_cloud.h>
 #  include <pcl/point_types.h>
+#endif
+
+#ifdef HAVE_QT
+#  include <QImage>
+#  include <QVector>
+#  include <QList>
+#  include <QPolygonF>
+#  include <QVector2D>
+#  include <QVector3D>
 #endif
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -236,6 +250,70 @@ int main()
         pcl_xyz_i.push_back(pt);
     }
 #endif  // HAVE_PCL
+
+    // =========================================================================
+    // Qt5 types  →  Image / Plot / Point Cloud Viewer
+    // =========================================================================
+#ifdef HAVE_QT
+    // QImage (RGB888)  →  Image Viewer
+    QImage qt_image_rgb(COLS, ROWS, QImage::Format_RGB888);
+    for (int r = 0; r < ROWS; ++r) {
+        uchar* line = qt_image_rgb.scanLine(r);
+        for (int c = 0; c < COLS; ++c) {
+            line[c * 3 + 0] = static_cast<uchar>(c * 4);
+            line[c * 3 + 1] = static_cast<uchar>(r * 4);
+            line[c * 3 + 2] = static_cast<uchar>((r + c) * 2 % 256);
+        }
+    }
+
+    // QImage (Grayscale8)  →  Image Viewer
+    QImage qt_image_gray(COLS, ROWS, QImage::Format_Grayscale8);
+    for (int r = 0; r < ROWS; ++r) {
+        uchar* line = qt_image_gray.scanLine(r);
+        for (int c = 0; c < COLS; ++c)
+            line[c] = static_cast<uchar>((r + c) * 2 % 256);
+    }
+
+    // QVector<double>  →  Plot Viewer (1D)
+    QVector<double> qt_vec_plot(64);
+    for (int i = 0; i < 64; ++i)
+        qt_vec_plot[i] = std::sin(i * 0.2);
+
+    // QList<float>  →  Plot Viewer (1D)
+    QList<float> qt_list_plot;
+    for (int i = 0; i < 64; ++i)
+        qt_list_plot.append(static_cast<float>(std::cos(i * 0.15)));
+
+    // QPolygonF  →  Plot Viewer (2D Scatter)
+    QPolygonF qt_polygon;
+    for (int i = 0; i < 100; ++i) {
+        double a = i * 2.0 * 3.14159265 / 100;
+        qt_polygon.append(QPointF(std::cos(a), std::sin(a)));
+    }
+
+    // QVector<QVector2D>  →  Plot Viewer (2D Scatter)
+    QVector<QVector2D> qt_vec2d(100);
+    for (int i = 0; i < 100; ++i) {
+        double a = i * 2.0 * 3.14159265 / 100;
+        qt_vec2d[i] = QVector2D(
+            static_cast<float>(std::cos(a) * 2.0),
+            static_cast<float>(std::sin(a) * 2.0)
+        );
+    }
+
+    // QVector<QVector3D>  →  Point Cloud Viewer
+    QVector<QVector3D> qt_vec3d(M);
+    for (int i = 0; i < M; ++i) {
+        float phi   = static_cast<float>(i) * 3.14159f / M;
+        float theta = static_cast<float>(i) * 6.28318f / M;
+        qt_vec3d[i] = QVector3D(
+            std::sin(phi) * std::cos(theta),
+            std::sin(phi) * std::sin(theta),
+            std::cos(phi)
+        );
+    }
+
+#endif  // HAVE_QT
 
     // =========================================================================
     // BREAKPOINT — open Matrix Viewer panel and click any variable above

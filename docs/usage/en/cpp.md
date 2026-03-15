@@ -37,6 +37,14 @@
 | Compiler | Clang/LLVM ≥ 14, GCC ≥ 11, or MSVC 2022 |
 | Optional libraries | `OpenCV 4`, `Eigen3`, `PCL` — depending on which types you visualize |
 
+> **All third-party libraries linked into the debugged program must be compiled with debug symbols.**
+> GDB and LLDB can only access member functions, struct fields, and type metadata when the library
+> carries DWARF debug symbols. Ubuntu / Debian system packages strip symbols by default.
+> Without debug symbols, Qt containers (`QVector`, `QList`, `QImage`) and other library types
+> fall back to raw memory reads and trigger a warning notification. For best results,
+> either install the `*-dbgsym` counterpart packages or build all dependencies from source
+> (e.g. via vcpkg with `-DCMAKE_BUILD_TYPE=Debug`).
+
 ---
 
 ## Supported Compilers and Debuggers
@@ -89,6 +97,25 @@ Standard Debug build works without extra flags:
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 make -j$(nproc)
 ```
+
+> **Third-party libraries must also carry DWARF debug symbols.**
+> System Qt / OpenCV / PCL packages on Ubuntu strip symbols. Two options:
+>
+> **Option A — install system debug-symbol packages** (see [Troubleshooting](#troubleshooting)):
+> ```bash
+> sudo apt-get install libopencv-dev libopencv4.5-dbg     # OpenCV
+> sudo apt-get install libqt5gui5-dbgsym                  # Qt5 (requires ddebs repo)
+> ```
+>
+> **Option B — build all dependencies from source via vcpkg** (recommended; debug symbols always included):
+> ```bash
+> export https_proxy=http://127.0.0.1:7890   # set your proxy if needed
+> cd ~/Library/vcpkg
+> ./vcpkg install opencv4 eigen3 pcl qtbase --triplet x64-linux
+> cmake -B build -DCMAKE_BUILD_TYPE=Debug \
+>   -DCMAKE_TOOLCHAIN_FILE=$HOME/Library/vcpkg/scripts/buildsystems/vcpkg.cmake ..
+> make -j$(nproc)
+> ```
 
 ### MSVC + vsdbg (Windows)
 
@@ -373,5 +400,13 @@ CMAKE_CXX_FLAGS_DEBUG:STRING=-O0 -gdwarf-4 -fstandalone-debug
 
 The type may not yet be detected by Layer-1 quick detection.  
 → Use **Option 3 (Command Palette)** to visualize it by name directly.
+
+### `QImage` cannot be visualized under GDB ("Couldn't find method" / "There is no member named d")
+
+The system Qt library does not have a separate debug-symbols package installed, so GDB
+cannot access `QImage` member functions or private members.  
+The extension already includes a memory-layout-based fallback that can read pixel data
+without debug symbols, but installing the symbols package makes the access more
+reliable.
 
 > See also: [C++ Windows CodeLLDB Setup Guide](../../cpp-windows-codelldb-setup.md) for a full walk-through.

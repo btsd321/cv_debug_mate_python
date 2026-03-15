@@ -10,10 +10,10 @@
 
 | 功能模块 | C++ 版 | Python 版对应 |
 |---------|--------|--------------|
-| **1D 曲线图** | `std::vector<T>`, `std::array<T,N>`, `T[N]`, `std::set<T>`, `Eigen::VectorX*`, `Eigen::Matrix<T,N,1>` | `list`, `tuple`, `np.ndarray` (1D), `array.array` |
-| **2D 散点图** | `Eigen::Matrix<T,N,2>` (N×2，列0=X，列1=Y) | `np.ndarray` (N,2), `list` of 2-tuples |
-| **2D 图像** | `cv::Mat`, `T[H][W]`, `std::array<std::array<T>>`, `Eigen::Matrix<T,R,C>` (rows>1, cols>2) | `PIL.Image`, `torch.Tensor` (2D/3D/4D), `cv2.UMat`/`GpuMat` |
-| **3D 点云** | `std::vector<cv::Point3f>` | `np.ndarray` (N,3/6), `list` of 3-tuples, `open3d.geometry.PointCloud` |
+| **1D 曲线图** | `std::vector<T>`, `std::array<T,N>`, `T[N]`, `std::set<T>`, `Eigen::VectorX*`, `Eigen::Matrix<T,N,1>`, `QVector<T>`, `QList<T>` | `list`, `tuple`, `np.ndarray` (1D), `array.array` |
+| **2D 散点图** | `Eigen::Matrix<T,N,2>` (N×2，列0=X，列1=Y), `QPolygonF`, `QVector<QVector2D>` | `np.ndarray` (N,2), `list` of 2-tuples |
+| **2D 图像** | `cv::Mat`, `T[H][W]`, `std::array<std::array<T>>`, `Eigen::Matrix<T,R,C>` (rows>1, cols>2), `QImage` | `PIL.Image`, `torch.Tensor` (2D/3D/4D), `cv2.UMat`/`GpuMat` |
+| **3D 点云** | `std::vector<cv::Point3f>`, `QVector<QVector3D>` | `np.ndarray` (N,3/6), `list` of 3-tuples, `open3d.geometry.PointCloud` |
 | **变量面板** | TreeView 自动检测当前作用域变量 | TreeView 自动检测当前作用域变量 |
 | **视图同步** | 配对变量联动缩放/平移 | 配对变量联动缩放/平移 |
 | **自动刷新** | 单步调试自动更新 | 单步调试自动更新 |
@@ -32,6 +32,7 @@
 | `cv2.UMat` | OpenCV UMat（CPU 透明 API） | 已实现 |
 | `cv2.cuda.GpuMat` | OpenCV GPU 矩阵 | 已实现 |
 | `Eigen::Matrix<T,R,C>` / `Eigen::Array<T,R,C>` (rows>1, cols>2) | 单通道灰度图（自动开启归一化） | 已实现 |
+| `QImage` (Qt5 / Qt6) | Qt 图像，支持 Format_Grayscale8 / RGB32 / ARGB32 / RGB888 等格式，兼容 Qt5 (`byteCount()`) 和 Qt6 (`sizeInBytes()`) | 计划中 |
 
 > **注意**：`numpy.ndarray` 不再作为图像类型直接可视化。  
 > 如需将 numpy 图像数据可视化，请使用 `PIL.Image.fromarray()` 或 `cv2.UMat()` 包装。
@@ -50,6 +51,9 @@
 | `Eigen::VectorX*` / `Eigen::RowVectorX*` | 1D 折线图 | 已实现 |
 | `Eigen::Matrix<T,N,1>` 或 `Eigen::Matrix<T,1,N>` | 1D 折线图 | 已实现 |
 | `Eigen::Matrix<T,N,2>` (N×2，列0=X，列1=Y) | 2D 散点图 | 已实现 |
+| `QVector<T>` / `QList<T>`（T 为数值类型，Qt5/Qt6）| 1D 折线图；Qt6 中 `QVector` = `QList`，类型字符串两者均需匹配 | 计划中 |
+| `QPolygonF`（= `QList<QPointF>`） | 2D 散点图（x=QPointF.x, y=QPointF.y） | 计划中 |
+| `QVector<QVector2D>` / `QList<QVector2D>` | 2D 散点图（x=x(), y=y()） | 计划中 |
 
 > **Eigen 路由规则**（Layer-2 运行时检测，查询 `.rows()` / `.cols()`）：
 >
@@ -67,6 +71,7 @@
 | `np.ndarray` shape `(N, 6)` | XYZ + RGB 点云 | 已实现 |
 | `list` / `tuple` of 3-element seqs | 点云列表 | 已实现 |
 | `open3d.geometry.PointCloud` | open3d 点云（含可选颜色） | 已实现 |
+| `QVector<QVector3D>`（Qt5/Qt6）| XYZ 点云（x=x(), y=y(), z=z()） | 计划中 |
 
 ---
 
@@ -340,17 +345,58 @@ Webview 渲染
 - [ ] Jupyter Notebook 调试支持
 
 ### Phase 5：C++ 适配器
-- [x] `cppAdapter.ts` 实现 `getVariablesInScope` / `fetchImageData` / `fetchPlotData` / `fetchPointCloudData`
-- [x] `cppDebugger.ts` 实现 `getContainerSize` / `build2DDataPointerExpressions` / `build3DDataPointerExpressions`
-- [x] `cv::Mat` 图像数据获取（通过 `libs/opencv/imageProvider.ts`）
-- [x] `std::vector<T>` / `std::array<T,N>` / `T[N]` 曲线数据获取（通过 `libs/std/plotProvider.ts`）
-- [x] 2D/3D `std::array` 和 C-style array 图像数据获取（通过 `libs/std/imageProvider.ts`）
-- [x] `std::vector<cv::Point3f/d>` / `std::array<cv::Point3f/d,N>` 点云数据获取（通过 `libs/std/pointCloudProvider.ts`）
-- [x] `Eigen::Matrix` / `Eigen::Array` / `Eigen::VectorX` 曲线数据获取（`libs/eigen/plotProvider.ts`）
+- [x] `cppAdapter.ts` 实现 `getVariablesInScope` / `fetchImageData` / `fetchPlotData` / `fetchPointCloudData`（按 session.type 路由到 `gdb/` / `codelldb/` / `cppvsdbg/`）
+- [x] `shared/debuggerBase.ts` — 共享 DAP 工具（`getCurrentFrameId` / `readMemoryChunked` / `parseSizeFromValue`）
+- [x] `gdb/debugger.ts` — GDB（cppdbg）专用：`(long long)` 类型转换，`repl` context
+- [x] `cppvsdbg/debugger.ts` — vsdbg（cppvsdbg）专用：同 GDB 表达式，独立演化
+- [x] `codelldb/debugger.ts` — CodeLLDB（lldb）专用：裸指针，`watch` context，STL 内部字段回退
+- [x] `cv::Mat` 图像数据获取（各 `{debugger}/libs/opencv/imageProvider.ts`）
+- [x] `std::vector<T>` / `std::array<T,N>` / `T[N]` 曲线数据获取（各 `{debugger}/libs/std/plotProvider.ts`）
+- [x] 2D/3D `std::array` 和 C-style array 图像数据获取（各 `{debugger}/libs/std/imageProvider.ts`）
+- [x] `std::vector<cv::Point3f/d>` / `std::array<cv::Point3f/d,N>` 点云数据获取（各 `{debugger}/libs/std/pointCloudProvider.ts`）
+- [x] `Eigen::Matrix` / `Eigen::Array` / `Eigen::VectorX` 曲线数据获取（各 `{debugger}/libs/eigen/plotProvider.ts`）
   - `cols==1` 或 `rows==1` → 1D 折线图
   - `cols==2` → 2D 散点图（Eigen 列优先：X=col0, Y=col1）
-- [x] `Eigen::Matrix` / `Eigen::Array` (rows>1, cols>2) 图像数据获取（`libs/eigen/imageProvider.ts`）
-- [x] `pcl::PointCloud<PointXYZ/XYZRGB/XYZRGBA/XYZI>` 点云数据获取（`libs/pcl/pointCloudProvider.ts`）
+- [x] `Eigen::Matrix` / `Eigen::Array` (rows>1, cols>2) 图像数据获取（各 `{debugger}/libs/eigen/imageProvider.ts`）
+- [x] `pcl::PointCloud<PointXYZ/XYZRGB/XYZRGBA/XYZI>` 点云数据获取（各 `{debugger}/libs/pcl/pointCloudProvider.ts`）
+
+### Phase 6：Qt5 / Qt6 C++ 类型支持
+
+> 所有实现位于各 `src/adapters/cpp/{gdb,codelldb,cppvsdbg}/libs/qt/`，兼容 Qt5 与 Qt6。
+
+#### 类型检测（`cppTypes.ts`）
+- [x] Layer-1 识别 `QImage`（类型字符串匹配）
+- [x] Layer-1 识别 `QVector<T>` / `QList<T>`（数值类型，Qt6 中两者合并）
+- [x] Layer-1 识别 `QPolygonF`
+- [x] Layer-1 识别 `QVector<QVector2D>` / `QList<QVector2D>`
+- [x] Layer-1 识别 `QVector<QVector3D>`
+
+#### 实现文件
+- [x] `libs/qt/qtUtils.ts` — Qt 类型辅助：`QtImageFormat` 枚举、`getQImageInfo()`（兼容 `byteCount()` / `sizeInBytes()`）
+- [x] `libs/qt/imageProvider.ts` — `QImage` → `ImageData`
+  - 通过 DAP evaluate 读取 `width()` / `height()` / `format()`
+  - Qt5：用 `byteCount()` 获取字节数；Qt6：用 `sizeInBytes()`（fallback 到 `byteCount()`）
+  - 通过 `readMemory` 读取 `bits()` 指针处的像素缓冲区
+  - 支持格式：`Format_Grayscale8`（1ch uint8）、`Format_RGB32` / `Format_ARGB32`（4ch）、`Format_RGB888`（3ch uint8）
+- [x] `libs/qt/plotProvider.ts` — `QVector<T>` / `QList<T>` / `QPolygonF` / `QVector<QVector2D>` → `PlotData`
+  - `QVector<T>` / `QList<T>`（数值型）：通过 `size()` + `data()` 指针读取连续内存 → 1D 折线图
+  - `QPolygonF`：同上，每元素为 `QPointF`（8 字节 = 2×double） → 2D 散点图
+  - `QVector<QVector2D>`：每元素为 `QVector2D`（8 字节 = 2×float） → 2D 散点图
+- [x] `libs/qt/pointCloudProvider.ts` — `QVector<QVector3D>` → `PointCloudData`
+  - 通过 `size()` + `data()` 指针读取连续内存，每元素 12 字节（3×float）
+
+#### 协调器注册
+- [x] `src/adapters/cpp/imageProvider.ts` — 将 `QtImageProvider` 追加到 `LIB_IMAGE_PROVIDERS`
+- [x] `src/adapters/cpp/plotProvider.ts` — 将 `QtPlotProvider` 追加到 `LIB_PLOT_PROVIDERS`
+- [x] `src/adapters/cpp/pointCloudProvider.ts` — 将 `QtPointCloudProvider` 追加到 `LIB_POINTCLOUD_PROVIDERS`
+
+#### Qt5 / Qt6 兼容性说明
+| 方面 | Qt5 | Qt6 | 处理方式 |
+|------|-----|-----|----------|
+| `byteCount()` | 存在 | 废弃，改用 `sizeInBytes()` | evaluate 先尝试 `sizeInBytes()`，失败则 fallback 到 `byteCount()` |
+| `QVector<T>` 类型字符串 | `QVector<float>` | `QList<float>` 或 `QVector<float>` | Layer-1 正则同时匹配两者 |
+| `QPolygonF` 基类 | `QVector<QPointF>` | `QList<QPointF>` | 直接遍历 `size()` + `data()` 即可，无需区分 |
+| `QImage::bits()` 返回类型 | `uchar*` | `uchar*` | 无差别 |
 
 ---
 
@@ -375,36 +421,40 @@ Webview 渲染
 | `src/adapters/IDebugAdapter.ts` | ✅ | 统一适配器接口定义 |
 | `src/adapters/ILibProviders.ts` | ✅ | 三方库统一接口（ILibImageProvider / ILibPlotProvider / ILibPointCloudProvider）|
 | `src/adapters/adapterRegistry.ts` | ✅ | session.type → 适配器 注册中心 |
-| `src/adapters/python/pythonDebugger.ts` | ✅ | DAP 通信：evaluate / fetchArrayData（JSON + Base64）|
+| `src/adapters/python/debugpy/debugger.ts` | ✅ | DAP 通信：evaluate / fetchArrayData（JSON + Base64）|
 | `src/adapters/python/pythonTypes.ts` | ✅ | 两层类型检测纯函数 |
-| `src/adapters/python/imageProvider.ts` | ✅ | 分发器：委托给首个 canHandle() 匹配的 ILibImageProvider |
-| `src/adapters/python/plotProvider.ts` | ✅ | 分发器：委托给首个 canHandle() 匹配的 ILibPlotProvider |
-| `src/adapters/python/pointCloudProvider.ts` | ✅ | 分发器：委托给首个 canHandle() 匹配的 ILibPointCloudProvider |
-| `src/adapters/python/pythonAdapter.ts` | ✅ | 实现 IDebugAdapter，委托给分发器 |
-| `src/adapters/python/libs/utils.ts` | ✅ | 公用辅助函数 |
-| `src/adapters/python/libs/numpy/imageProvider.ts` | ✅ | ndarray / cv2.Mat 图像获取 |
-| `src/adapters/python/libs/numpy/plotProvider.ts` | ✅ | ndarray 1D 曲线获取 |
-| `src/adapters/python/libs/numpy/pointCloudProvider.ts` | ✅ | ndarray (N,3)/(N,6) 点云获取 |
-| `src/adapters/python/libs/pil/imageProvider.ts` | ✅ | PIL.Image 图像获取 |
-| `src/adapters/python/libs/torch/imageProvider.ts` | ✅ | torch.Tensor 图像获取 |
-| `src/adapters/python/libs/torch/plotProvider.ts` | ✅ | torch.Tensor 1D 曲线获取 |
-| `src/adapters/python/libs/builtins/plotProvider.ts` | ✅ | list / tuple / range 曲线获取 |
-| `src/adapters/python/libs/builtins/pointCloudProvider.ts` | ✅ | list of (x,y,z) 点云获取 |
+| `src/adapters/python/debugpy/imageProvider.ts` | ✅ | 分发器：委托给首个 canHandle() 匹配的 ILibImageProvider |
+| `src/adapters/python/debugpy/plotProvider.ts` | ✅ | 分发器：委托给首个 canHandle() 匹配的 ILibPlotProvider |
+| `src/adapters/python/debugpy/pointCloudProvider.ts` | ✅ | 分发器：委托给首个 canHandle() 匹配的 ILibPointCloudProvider |
+| `src/adapters/python/pythonAdapter.ts` | ✅ | 实现 IDebugAdapter，委托给 debugpy/ 分发器 |
+| `src/adapters/python/debugpy/libs/utils.ts` | ✅ | 公用辅助函数 |
+| `src/adapters/python/debugpy/libs/numpy/imageProvider.ts` | ✅ | ndarray / cv2.Mat 图像获取 |
+| `src/adapters/python/debugpy/libs/numpy/plotProvider.ts` | ✅ | ndarray 1D 曲线获取 |
+| `src/adapters/python/debugpy/libs/numpy/pointCloudProvider.ts` | ✅ | ndarray (N,3)/(N,6) 点云获取 |
+| `src/adapters/python/debugpy/libs/pil/imageProvider.ts` | ✅ | PIL.Image 图像获取 |
+| `src/adapters/python/debugpy/libs/torch/imageProvider.ts` | ✅ | torch.Tensor 图像获取 |
+| `src/adapters/python/debugpy/libs/torch/plotProvider.ts` | ✅ | torch.Tensor 1D 曲线获取 |
+| `src/adapters/python/debugpy/libs/builtins/plotProvider.ts` | ✅ | list / tuple / range 曲线获取 |
+| `src/adapters/python/debugpy/libs/builtins/pointCloudProvider.ts` | ✅ | list of (x,y,z) 点云获取 |
 | `src/adapters/cpp/cppTypes.ts` | ✅ | Layer-1 C++ 类型检测（cv::Mat / Eigen / std::vector / std::array / C-style array / Point3 向量 / pcl）|
-| `src/adapters/cpp/cppDebugger.ts` | ✅ | DAP 通信：evaluate / readMemoryChunked / getContainerSize / build2D/3DDataPointerExpressions |
-| `src/adapters/cpp/cppAdapter.ts` | ✅ | 实现 IDebugAdapter，委托给三个协调器 |
-| `src/adapters/cpp/imageProvider.ts` | ✅ | 图像分发器（OpenCvImageProvider + StdImageProvider）|
-| `src/adapters/cpp/plotProvider.ts` | ✅ | 曲线分发器（EigenPlotProvider + StdPlotProvider）|
-| `src/adapters/cpp/pointCloudProvider.ts` | ✅ | 点云分发器（PclPointCloudProvider + StdPointCloudProvider）|
-| `src/adapters/cpp/libs/utils.ts` | ✅ | 跨库公用辅助函数 |
-| `src/adapters/cpp/libs/opencv/imageProvider.ts` | ✅ | cv::Mat 图像获取（LLDB / GDB / vsdbg 三路径）|
-| `src/adapters/cpp/libs/opencv/matUtils.ts` | ✅ | MatInfo 类型及 getMatInfoFromVariables / getMatInfoFromEvaluate |
-| `src/adapters/cpp/libs/std/stdUtils.ts` | ✅ | STL / C-style array / Point3 纯函数类型检测 |
-| `src/adapters/cpp/libs/std/plotProvider.ts` | ✅ | std::vector / std::array / T[N] 1D 曲线获取 |
-| `src/adapters/cpp/libs/std/imageProvider.ts` | ✅ | 2D/3D std::array 和 C-style array 图像获取 |
-| `src/adapters/cpp/libs/std/pointCloudProvider.ts` | ✅ | std::vector / std::array of cv::Point3f/d 点云获取 |
-| `src/adapters/cpp/libs/eigen/plotProvider.ts` | ✅ | Eigen::Matrix/Array/VectorX 曲线获取（rows()/cols()/data() 路径）|
-| `src/adapters/cpp/libs/pcl/pointCloudProvider.ts` | ✅ | pcl::PointCloud<PointXYZ/RGB/RGBA/I> 点云获取（points.data() 路径）|
+| `src/adapters/cpp/shared/debuggerBase.ts` | ✅ | 共享 DAP 工具（getCurrentFrameId / readMemoryChunked / parseSizeFromValue）|
+| `src/adapters/cpp/shared/utils.ts` | ✅ | 跨库公用辅助函数（buffer / dtype / stats）|
+| `src/adapters/cpp/cppAdapter.ts` | ✅ | 实现 IDebugAdapter，按 session.type 路由到各调试器 |
+| `src/adapters/cpp/gdb/debugger.ts` | ✅ | GDB 专用 DAP 通信（repl context，(long long) 转换，getContainerSize）|
+| `src/adapters/cpp/gdb/imageProvider.ts` | ✅ | GDB 图像分发器 |
+| `src/adapters/cpp/gdb/plotProvider.ts` | ✅ | GDB 曲线分发器 |
+| `src/adapters/cpp/gdb/pointCloudProvider.ts` | ✅ | GDB 点云分发器 |
+| `src/adapters/cpp/gdb/libs/{opencv,eigen,pcl,std,qt}/` | ✅ | GDB 各库提供器（仅含 GDB 路径）|
+| `src/adapters/cpp/cppvsdbg/debugger.ts` | ✅ | vsdbg 专用 DAP 通信 |
+| `src/adapters/cpp/cppvsdbg/imageProvider.ts` | ✅ | vsdbg 图像分发器 |
+| `src/adapters/cpp/cppvsdbg/plotProvider.ts` | ✅ | vsdbg 曲线分发器 |
+| `src/adapters/cpp/cppvsdbg/pointCloudProvider.ts` | ✅ | vsdbg 点云分发器 |
+| `src/adapters/cpp/cppvsdbg/libs/{opencv,eigen,pcl,std,qt}/` | ✅ | vsdbg 各库提供器（仅含 MSVC 路径）|
+| `src/adapters/cpp/codelldb/debugger.ts` | ✅ | CodeLLDB 专用 DAP 通信（watch context，裸指针，STL 内部字段回退）|
+| `src/adapters/cpp/codelldb/imageProvider.ts` | ✅ | CodeLLDB 图像分发器 |
+| `src/adapters/cpp/codelldb/plotProvider.ts` | ✅ | CodeLLDB 曲线分发器 |
+| `src/adapters/cpp/codelldb/pointCloudProvider.ts` | ✅ | CodeLLDB 点云分发器 |
+| `src/adapters/cpp/codelldb/libs/{opencv,eigen,pcl,std,qt}/` | ✅ | CodeLLDB 各库提供器（仅含 LLDB 路径）|
 | `src/viewers/viewerTypes.ts` | ✅ | 语言无关统一展示数据类型 |
 | `src/utils/panelManager.ts` | ✅ | Webview 面板生命周期、自动刷新、sync broadcast（使用 IDebugAdapter）|
 | `src/utils/syncManager.ts` | ✅ | idle → waiting → paired 状态机 |

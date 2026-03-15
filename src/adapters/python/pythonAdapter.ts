@@ -16,11 +16,11 @@ import {
     isJupyterSession,
     getVariablesInScope,
     getVariableInfo,
-} from "./pythonDebugger";
+} from "./debugpy/debugger";
 import { basicTypeDetect, detectVisualizableType } from "./pythonTypes";
-import { ImageProvider } from "./imageProvider";
-import { PlotProvider } from "./plotProvider";
-import { PointCloudProvider } from "./pointCloudProvider";
+import { ImageProvider } from "./debugpy/imageProvider";
+import { PlotProvider } from "./debugpy/plotProvider";
+import { PointCloudProvider } from "./debugpy/pointCloudProvider";
 
 export class PythonAdapter implements IDebugAdapter {
     isSupportedSession(session: vscode.DebugSession): boolean {

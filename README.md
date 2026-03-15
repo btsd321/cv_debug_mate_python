@@ -1,7 +1,7 @@
 ﻿# Matrix Viewer Debug
 
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.93%2B-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
-[![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdull-bird%2Fcv_debug_mate_python%2Fmain%2Fpackage.json&query=%24.version&label=version&color=blue)](https://github.com/dull-bird/cv_debug_mate_python)
+[![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbtsd321%2Fmatrix_viewer_debug%2Fmain%2Fpackage.json&query=%24.version&label=version&color=blue)](https://github.com/btsd321/matrix_viewer_debug)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![debugpy](https://img.shields.io/badge/debugpy-supported-green)](https://github.com/microsoft/debugpy)
@@ -54,13 +54,18 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 | -------------------- | --------------------------------------- | --------------- |
 | **Image (2D)** | `cv::Mat` (OpenCV) | 🖼️ Image Viewer |
 | | `Eigen::Matrix<T,R,C>` / `Eigen::Array<T,R,C>` (rows>1, cols>2) | 🖼️ Image Viewer |
+| | `QImage` (Qt5 / Qt6) | 🖼️ Image Viewer |
 | **Point Cloud (3D)** | `pcl::PointCloud<PointXYZ>` / `<PointXYZRGB>` / `<PointXYZI>` | 📊 3D Viewer |
 | | `std::vector<cv::Point3f>` / `std::vector<cv::Point3d>` | 📊 3D Viewer |
 | | `std::array<cv::Point3f, N>` / `std::array<cv::Point3d, N>` | 📊 3D Viewer |
+| | `QVector<QVector3D>` (Qt5 / Qt6) | 📊 3D Viewer |
 | **Plot (1D/2D)** | `Eigen::VectorX*` / `Eigen::RowVectorX*` | 📈 1D Chart |
 | | `Eigen::Matrix<T,N,1>` / `Eigen::Matrix<T,1,N>` | 📈 1D Chart |
 | | `Eigen::Matrix<T,N,2>` (N×2) | 📈 2D Scatter (col0=X, col1=Y) |
 | | `std::vector<T>` / `std::array<T, N>` / `T[N]` (numeric) | 📈 1D Chart |
+| | `QVector<T>` / `QList<T>` (numeric scalar, Qt5 / Qt6) | 📈 1D Chart |
+| | `QPolygonF` (Qt5 / Qt6) | 📈 2D Scatter |
+| | `QVector<QVector2D>` / `QList<QVector2D>` (Qt5 / Qt6) | 📈 2D Scatter |
 
 > **Eigen routing rules** (C++): query runtime `.rows()` / `.cols()` to decide viewer type:
 > - `cols == 1` or `rows == 1` → **1D line plot**
@@ -154,20 +159,24 @@ npm run compile
 
 ## 🏗️ Architecture Overview
 
-The extension uses a two-level provider hierarchy so that adding a new library or a new language never requires touching existing code:
+The extension uses a three-level provider hierarchy so that adding a new library or a new language never requires touching existing code:
 
 ```
-IDebugAdapter          ← one implementation per language (Python, C++, …)
-  └─ *Provider (coordinator)   ← one coordinator per viewer type (image / plot / pointCloud)
-       └─ ILib*Provider (libs/)  ← one file per third-party library
-            numpy/imageProvider.ts
-            pil/imageProvider.ts
-            … open3d/pointCloudProvider.ts (future)
+IDebugAdapter                    ← one implementation per language (Python, C++, …)
+  └─ per-debugger layer          ← C++: gdb/ | codelldb/ | cppvsdbg/
+       └─ *Provider (coordinator)  ← one coordinator per viewer type (image / plot / pointCloud)
+            └─ ILib*Provider (libs/)  ← one file per third-party library
+                 opencv/imageProvider.ts
+                 eigen/plotProvider.ts
+                 pcl/pointCloudProvider.ts …
 ```
+
+The **per-debugger layer** ensures that GDB, CodeLLDB, and vsdbg expressions are completely isolated — no runtime `if (isLLDB)` branching inside library providers.
 
 | What to add | Where to add it |
 |---|---|
-| New **library** (e.g. open3d) | `src/adapters/<lang>/libs/<libName>/` |
+| New **library for Python** (e.g. open3d) | `src/adapters/python/debugpy/libs/<libName>/` |
+| New **library for C++** (e.g. a new OpenCV wrapper) | `src/adapters/cpp/{gdb,codelldb,cppvsdbg}/libs/<libName>/` |
 | New **language** (e.g. Rust) | `src/adapters/<lang>/` + register in `adapterRegistry.ts` |
 
 ---
