@@ -28,7 +28,7 @@
   let dragStartX = 0;
   let dragStartY = 0;
   let normalize = !initData.isUint8;
-  let colormap = "gray";
+  let colormap = window.__matrixViewer.defaultColormap ?? "gray";
   // Derive initial BGR-swap state from the image format reported by the extension.
   // BGR and BGRA images need R/B channels swapped before display.
   let swapBGR = (initData.format === "BGR" || initData.format === "BGRA");
@@ -49,6 +49,7 @@
 
   function init() {
     chkNormalize.checked = normalize;
+    selColormap.value = colormap;
     chkBGR.checked = swapBGR;
     fitToWindow(currentData);
     renderImage(currentData);
@@ -106,13 +107,25 @@
     const pixels = decodeToRGBA(rawBytes, width, height, channels, dtype, dataMin, dataMax);
     const imageData = new ImageData(pixels, width, height);
 
-    // Draw onto an offscreen canvas, then transform for zoom/pan
     const off = new OffscreenCanvas(width, height);
     off.getContext("2d").putImageData(imageData, 0, 0);
 
+    // Downsample for display if image exceeds maxDisplaySize megapixels
+    const maxMegapixels = window.__matrixViewer.maxDisplaySize ?? 50;
+    let displaySrc = off;
+    if (width * height > maxMegapixels * 1e6) {
+      const scale = Math.sqrt(maxMegapixels * 1e6 / (width * height));
+      const dw = Math.max(1, Math.round(width * scale));
+      const dh = Math.max(1, Math.round(height * scale));
+      const sampled = new OffscreenCanvas(dw, dh);
+      sampled.getContext("2d").drawImage(off, 0, 0, dw, dh);
+      displaySrc = sampled;
+    }
+
+    // Draw onto an offscreen canvas, then transform for zoom/pan
     ctx.save();
     ctx.setTransform(zoom, 0, 0, zoom, panX, panY);
-    ctx.drawImage(off, 0, 0);
+    ctx.drawImage(displaySrc, 0, 0, width, height);
     ctx.restore();
   }
 

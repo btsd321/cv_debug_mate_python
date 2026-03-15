@@ -27,6 +27,9 @@ export function buildImageWebviewHtml(
         );
 
     const nonce = generateNonce();
+    const cfg = vscode.workspace.getConfiguration("matrixViewer");
+    const defaultColormap = cfg.get<string>("defaultColormap", "gray");
+    const maxDisplaySize = cfg.get<number>("maxDisplaySize", 50);
 
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
@@ -71,7 +74,11 @@ export function buildImageWebviewHtml(
 
     // Bootstrap the viewer — full implementation is in image-viewer.js
     // loaded below; this object is picked up by that script.
-    window.__matrixViewer = { initData: INIT_DATA };
+    window.__matrixViewer = {
+      initData: INIT_DATA,
+      defaultColormap: ${JSON.stringify(defaultColormap)},
+      maxDisplaySize: ${maxDisplaySize}
+    };
   </script>
   <script nonce="${nonce}" src="${mediaUri("image-viewer.js")}"></script>
 </body>
