@@ -77,7 +77,7 @@ src/
 │               ├── qtUtils.ts           # QImage format enum, qImageLayout, qVectorElementType helpers
 │               ├── imageProvider.ts     # QImage → ImageData (bits() + sizeInBytes/byteCount)
 │               ├── plotProvider.ts      # QVector<T>/QList<T>/QPolygonF/QVector<QVector2D> → PlotData
-│               └── pointCloudProvider.ts # QVector<QVector3D>/QList<QVector3D> → PointCloudData
+│               └── pointCloudProvider.ts # QVector<QVector3D> → PointCloudData
 ├── viewers/
 │   └── viewerTypes.ts        # Language-agnostic display data contracts (ImageData, PlotData, PointCloudData)
 ├── utils/

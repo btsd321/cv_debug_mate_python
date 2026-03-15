@@ -21,7 +21,7 @@
  *   QImage                              → Image Viewer (RGB888 / Grayscale8)
  *   QVector<double> / QList<float>      → Plot Viewer  (1D)
  *   QPolygonF / QVector<QVector2D>      → Plot Viewer  (2D Scatter)
- *   QVector<QVector3D> / QList<QVector3D> → Point Cloud Viewer
+ *   QVector<QVector3D>                     → Point Cloud Viewer
  *
  * Dependencies (all optional — missing libs are guarded by #ifdef):
  *   OpenCV  ≥ 4.x   (HAVE_OPENCV)
@@ -313,17 +313,6 @@ int main()
         );
     }
 
-    // QList<QVector3D>  →  Point Cloud Viewer
-    QList<QVector3D> qt_list3d;
-    for (int i = 0; i < M / 2; ++i) {
-        float phi   = static_cast<float>(i) * 3.14159f / (M / 2);
-        float theta = static_cast<float>(i) * 6.28318f / (M / 2);
-        qt_list3d.append(QVector3D(
-            std::sin(phi) * std::cos(theta) * 0.5f,
-            std::sin(phi) * std::sin(theta) * 0.5f,
-            std::cos(phi) * 0.5f
-        ));
-    }
 #endif  // HAVE_QT
 
     // =========================================================================

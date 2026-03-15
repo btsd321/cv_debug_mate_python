@@ -92,4 +92,3 @@ Output: `build_llvm/demo`
 | `qt_polygon` *(Qt5)* | `QPolygonF` | Plot (2D Scatter) |
 | `qt_vec2d` *(Qt5)* | `QVector<QVector2D>` | Plot (2D Scatter) |
 | `qt_vec3d` *(Qt5)* | `QVector<QVector3D>` | Point Cloud |
-| `qt_list3d` *(Qt5)* | `QList<QVector3D>` | Point Cloud |

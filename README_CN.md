@@ -58,7 +58,7 @@
 | **点云（3D）** | `pcl::PointCloud<PointXYZ>` / `<PointXYZRGB>` / `<PointXYZI>` | 📊 3D 查看器 |
 | | `std::vector<cv::Point3f>` / `std::vector<cv::Point3d>` | 📊 3D 查看器 |
 | | `std::array<cv::Point3f, N>` / `std::array<cv::Point3d, N>` | 📊 3D 查看器 |
-| | `QVector<QVector3D>` / `QList<QVector3D>`（Qt5 / Qt6）| 📊 3D 查看器 |
+| | `QVector<QVector3D>`（Qt5 / Qt6）| 📊 3D 查看器 |
 | **曲线（1D/2D）** | `Eigen::VectorX*` / `Eigen::RowVectorX*` | 📈 1D 折线图 |
 | | `Eigen::Matrix<T,N,1>` / `Eigen::Matrix<T,1,N>` | 📈 1D 折线图 |
 | | `Eigen::Matrix<T,N,2>`（N×2 矩阵）| 📈 2D 散点图（列0=X，列1=Y）|

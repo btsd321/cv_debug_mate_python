@@ -2,13 +2,12 @@
  * qt/pointCloudProvider.ts — PointCloudData from QVector<QVector3D> (Qt5 + Qt6).
  *
  * Supported types:
- *   QVector<QVector3D>   — N × (x,y,z) float32  (Qt5)
- *   QList<QVector3D>     — N × (x,y,z) float32  (Qt6 — QVector<T> is a typedef of QList<T>)
+ *   QVector<QVector3D>   — N × (x,y,z) float32  (Qt5 / Qt6)
  *
  * QVector3D memory layout (Qt stable ABI):
  *   struct QVector3D { float xp; float yp; float zp; };  // 12 bytes, no padding
  *
- * QVector<QVector3D> / QList<QVector3D> stores elements contiguously:
+ * QVector<QVector3D> stores elements contiguously:
  *   bytes = N × 12  →  [x0,y0,z0,  x1,y1,z1, …]  all float32 little-endian
  *
  * Data-fetch strategy:
@@ -30,7 +29,7 @@ import {
     tryGetDataPointer,
 } from "../../cppDebugger";
 import { computeBounds } from "../utils";
-import { isQVectorOf3D, getQContainerSize } from "./qtUtils";
+import { isQVectorOf3D, getQContainerSize, getQVectorDataPointer, QtDataPtr } from "./qtUtils";
 import { logger } from "../../../../log/logger";
 
 // QVector3D = { float xp; float yp; float zp; } — 12 bytes, no padding
@@ -42,15 +41,21 @@ async function getDataPointer(
     session: vscode.DebugSession,
     varName: string,
     info: VariableInfo
-): Promise<string | null> {
-    if (info.variablesReference && info.variablesReference > 0) {
+): Promise<QtDataPtr | null> {
+    // Qt-native tree walk (works on cppvsdbg without member-function evaluation)
+    if ((info.variablesReference ?? 0) > 0) {
+        const result = await getQVectorDataPointer(session, info.variablesReference!);
+        if (result) { return result; }
+    }
+    // Fallback
+    if ((info.variablesReference ?? 0) > 0) {
         const ptr = await getVectorDataPointer(
             session,
             varName,
-            info.variablesReference,
+            info.variablesReference!,
             info.frameId
         );
-        if (ptr) { return ptr; }
+        if (ptr) { return { ptr, slotStride: 0 }; }
     }
     const exprs = isUsingLLDB(session)
         ? [`${varName}.data()`, `&${varName}[0]`]
@@ -59,7 +64,8 @@ async function getDataPointer(
             `(long long)&${varName}[0]`,
             `reinterpret_cast<long long>(${varName}.data())`,
         ];
-    return tryGetDataPointer(session, exprs, info.frameId);
+    const ptr = await tryGetDataPointer(session, exprs, info.frameId);
+    return ptr ? { ptr, slotStride: 0 } : null;
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────
@@ -88,11 +94,13 @@ export class QtPointCloudProvider implements ILibPointCloudProvider {
         logger.debug(`QtPointCloudProvider: ${varName} count=${count}`);
 
         // ── Step 2: data pointer ──────────────────────────────────────────
-        const dataPtr = await getDataPointer(session, varName, info);
-        if (!dataPtr) {
-            logger.warn(`QtPointCloudProvider: could not resolve data pointer for ${varName}`);
+        const dataPtrInfo = await getDataPointer(session, varName, info);
+        if (!dataPtrInfo) {
+            logger.warn(`QtPointCloudProvider: could not resolve data pointer for ${varName} (QList<QVector3D> uses pointer storage — use QVector<QVector3D> instead)`);
             return null;
         }
+        const { ptr: dataPtr, slotStride } = dataPtrInfo;
+        logger.debug(`QtPointCloudProvider: ptr=${dataPtr} slotStride=${slotStride}`);
 
         // ── Step 3: read memory ───────────────────────────────────────────
         const totalBytes = count * QVECTOR3D_STRIDE;

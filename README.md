@@ -58,7 +58,7 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 | **Point Cloud (3D)** | `pcl::PointCloud<PointXYZ>` / `<PointXYZRGB>` / `<PointXYZI>` | 📊 3D Viewer |
 | | `std::vector<cv::Point3f>` / `std::vector<cv::Point3d>` | 📊 3D Viewer |
 | | `std::array<cv::Point3f, N>` / `std::array<cv::Point3d, N>` | 📊 3D Viewer |
-| | `QVector<QVector3D>` / `QList<QVector3D>` (Qt5 / Qt6) | 📊 3D Viewer |
+| | `QVector<QVector3D>` (Qt5 / Qt6) | 📊 3D Viewer |
 | **Plot (1D/2D)** | `Eigen::VectorX*` / `Eigen::RowVectorX*` | 📈 1D Chart |
 | | `Eigen::Matrix<T,N,1>` / `Eigen::Matrix<T,1,N>` | 📈 1D Chart |
 | | `Eigen::Matrix<T,N,2>` (N×2) | 📈 2D Scatter (col0=X, col1=Y) |

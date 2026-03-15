@@ -71,7 +71,7 @@
 | `np.ndarray` shape `(N, 6)` | XYZ + RGB 点云 | 已实现 |
 | `list` / `tuple` of 3-element seqs | 点云列表 | 已实现 |
 | `open3d.geometry.PointCloud` | open3d 点云（含可选颜色） | 已实现 |
-| `QVector<QVector3D>` / `QList<QVector3D>`（Qt5/Qt6）| XYZ 点云（x=x(), y=y(), z=z()） | 计划中 |
+| `QVector<QVector3D>`（Qt5/Qt6）| XYZ 点云（x=x(), y=y(), z=z()） | 计划中 |
 
 ---
 
@@ -366,7 +366,7 @@ Webview 渲染
 - [x] Layer-1 识别 `QVector<T>` / `QList<T>`（数值类型，Qt6 中两者合并）
 - [x] Layer-1 识别 `QPolygonF`
 - [x] Layer-1 识别 `QVector<QVector2D>` / `QList<QVector2D>`
-- [x] Layer-1 识别 `QVector<QVector3D>` / `QList<QVector3D>`
+- [x] Layer-1 识别 `QVector<QVector3D>`
 
 #### 实现文件
 - [x] `libs/qt/qtUtils.ts` — Qt 类型辅助：`QtImageFormat` 枚举、`getQImageInfo()`（兼容 `byteCount()` / `sizeInBytes()`）
@@ -379,7 +379,7 @@ Webview 渲染
   - `QVector<T>` / `QList<T>`（数值型）：通过 `size()` + `data()` 指针读取连续内存 → 1D 折线图
   - `QPolygonF`：同上，每元素为 `QPointF`（8 字节 = 2×double） → 2D 散点图
   - `QVector<QVector2D>`：每元素为 `QVector2D`（8 字节 = 2×float） → 2D 散点图
-- [x] `libs/qt/pointCloudProvider.ts` — `QVector<QVector3D>` / `QList<QVector3D>` → `PointCloudData`
+- [x] `libs/qt/pointCloudProvider.ts` — `QVector<QVector3D>` → `PointCloudData`
   - 通过 `size()` + `data()` 指针读取连续内存，每元素 12 字节（3×float）
 
 #### 协调器注册

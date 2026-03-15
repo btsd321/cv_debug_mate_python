@@ -43,6 +43,8 @@ import {
     qVectorElementType,
     qtScalarToDtype,
     getQContainerSize,
+    getQVectorDataPointer,
+    QtDataPtr,
 } from "./qtUtils";
 import { logger } from "../../../../log/logger";
 
@@ -52,15 +54,21 @@ async function getDataPointer(
     session: vscode.DebugSession,
     varName: string,
     info: VariableInfo
-): Promise<string | null> {
-    if (info.variablesReference && info.variablesReference > 0) {
+): Promise<QtDataPtr | null> {
+    // Qt-native tree walk (works on cppvsdbg without member-function evaluation)
+    if ((info.variablesReference ?? 0) > 0) {
+        const result = await getQVectorDataPointer(session, info.variablesReference!);
+        if (result) { return result; }
+    }
+    // Fallback: generic contiguous-array data pointer (std::vector / LLDB)
+    if ((info.variablesReference ?? 0) > 0) {
         const ptr = await getVectorDataPointer(
             session,
             varName,
-            info.variablesReference,
+            info.variablesReference!,
             info.frameId
         );
-        if (ptr) { return ptr; }
+        if (ptr) { return { ptr, slotStride: 0 }; }
     }
     const exprs = isUsingLLDB(session)
         ? [`${varName}.data()`, `&${varName}[0]`]
@@ -68,8 +76,9 @@ async function getDataPointer(
             `(long long)${varName}.data()`,
             `(long long)&${varName}[0]`,
             `reinterpret_cast<long long>(${varName}.data())`,
-        ];
-    return tryGetDataPointer(session, exprs, info.frameId);
+          ];
+    const ptr = await tryGetDataPointer(session, exprs, info.frameId);
+    return ptr ? { ptr, slotStride: 0 } : null;
 }
 
 function bytesForDtype(dtype: string): number {
@@ -144,15 +153,18 @@ export class QtPlotProvider implements ILibPlotProvider {
         }
 
         // ── Step 3: data pointer ──────────────────────────────────────────
-        const dataPtr = await getDataPointer(session, varName, info);
-        if (!dataPtr) {
-            logger.warn(`QtPlotProvider: could not resolve data pointer for ${varName}`);
+        const dataPtrInfo = await getDataPointer(session, varName, info);
+        if (!dataPtrInfo) {
+            logger.warn(`QtPlotProvider: could not resolve data pointer for ${varName} (type=${typeStr}; QList<large T> is not supported — use QVector<T> instead)`);
             return null;
         }
-        logger.debug(`QtPlotProvider: ${is2DScatter ? "2D scatter" : "1D"} dtype=${dtype} stride=${strideBytes} ptr=${dataPtr}`);
+        const { ptr: dataPtr, slotStride } = dataPtrInfo;
+        // slotStride=8: QList inline (void* slots, stride 8); slotStride=0: QVector contiguous
+        const effectiveStride = slotStride > 0 ? slotStride : strideBytes;
+        logger.debug(`QtPlotProvider: ${is2DScatter ? "2D scatter" : "1D"} dtype=${dtype} stride=${strideBytes} slotStride=${slotStride} ptr=${dataPtr}`);
 
         // ── Step 4: read memory ───────────────────────────────────────────
-        const totalBytes = count * strideBytes;
+        const totalBytes = count * effectiveStride;
         const buffer = await readMemoryChunked(session, dataPtr, totalBytes);
         if (!buffer) {
             logger.warn(`QtPlotProvider: readMemory failed for ${varName}`);
@@ -162,12 +174,13 @@ export class QtPlotProvider implements ILibPlotProvider {
 
         // ── Step 5: parse PlotData ────────────────────────────────────────
         if (is2DScatter) {
+            // effectiveStride = same as strideBytes for 2D types (sizeof ≥ 8 covers all)
             const xValues: number[] = new Array(count);
             const yValues: number[] = new Array(count);
             const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
             const isDouble = dtype === "float64";
             for (let i = 0; i < count; i++) {
-                const base = i * strideBytes;
+                const base = i * effectiveStride;
                 xValues[i] = isDouble
                     ? view.getFloat64(base + xOffset, true)
                     : view.getFloat32(base + xOffset, true);
@@ -186,7 +199,30 @@ export class QtPlotProvider implements ILibPlotProvider {
             };
         }
 
-        // 1D scalar array
+        // 1D scalar
+        if (slotStride > 0 && slotStride !== strideBytes) {
+            // QList inline: each slot is slotStride (8) bytes, T in first strideBytes bytes
+            const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+            const yValues: number[] = new Array(count);
+            for (let i = 0; i < count; i++) {
+                const slot = i * slotStride;
+                switch (dtype) {
+                    case "float32": yValues[i] = view.getFloat32(slot, true); break;
+                    case "float64": yValues[i] = view.getFloat64(slot, true); break;
+                    case "int32":   yValues[i] = view.getInt32(slot, true);   break;
+                    case "uint32":  yValues[i] = view.getUint32(slot, true);  break;
+                    case "int16":   yValues[i] = view.getInt16(slot, true);   break;
+                    case "uint16":  yValues[i] = view.getUint16(slot, true);  break;
+                    case "int8":    yValues[i] = view.getInt8(slot);          break;
+                    case "uint8":   yValues[i] = view.getUint8(slot);         break;
+                    default:        yValues[i] = view.getFloat32(slot, true); break;
+                }
+            }
+            logger.debug(`QtPlotProvider: returning 1D plot (inline slot) length=${count}`);
+            return { yValues, dtype, length: count, stats: computeStats(yValues), varName };
+        }
+
+        // Contiguous T[] (QVector or fallback)
         const yValues = typedBufferToNumbers(buffer, dtype);
         logger.debug(`QtPlotProvider: returning 1D plot length=${count}`);
         return {

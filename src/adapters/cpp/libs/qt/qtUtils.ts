@@ -203,14 +203,25 @@ export async function getQContainerSize(
 
     // ── Strategy 1a: QVector<T> style — d->size ──────────────────────────
     // Qt5 QVector: d (QVectorData*) → { ref, size, alloc, … }
+    // cppvsdbg may show d → [QArrayData] → { size, … } (one extra level)
     const dVar = children.find(v => v.name === "d" && (v.variablesReference ?? 0) > 0);
     if (dVar?.variablesReference) {
         try {
             const dResp = await session.customRequest("variables", {
                 variablesReference: dVar.variablesReference,
             });
-            const dVars: DapVar[] = dResp?.variables ?? [];
+            let dVars: DapVar[] = dResp?.variables ?? [];
             logger.debug(`getQContainerSize: d-ptr children=[${dVars.map(v => v.name).join(", ")}]`);
+
+            // cppvsdbg may wrap QArrayData fields inside a QArrayData or [QArrayData] base node
+            if (dVars.length === 1 && /QArrayData/.test(dVars[0].name) &&
+                (dVars[0].variablesReference ?? 0) > 0) {
+                const adResp = await session.customRequest("variables", {
+                    variablesReference: dVars[0].variablesReference!,
+                });
+                dVars = adResp?.variables ?? [];
+                logger.debug(`getQContainerSize: QArrayData children=[${dVars.map(v => v.name).join(", ")}]`);
+            }
 
             // Qt5 QVector: d->size
             const sizeVar = dVars.find(v => v.name === "size");
@@ -239,7 +250,7 @@ export async function getQContainerSize(
     // ── Strategy 1b: cppvsdbg may surface d with varRef=0; try [QList]  ──
     if (!dVar) {
         const qlistBase = children.find(
-            v => /^\[Q(?:Vector|List)\]$/.test(v.name) && (v.variablesReference ?? 0) > 0
+            v => /^\[?Q(?:Vector|List)/.test(v.name) && (v.variablesReference ?? 0) > 0
         );
         if (qlistBase?.variablesReference) {
             logger.debug(`getQContainerSize: trying [QList/QVector] base varRef=${qlistBase.variablesReference}`);
@@ -253,7 +264,15 @@ export async function getQContainerSize(
                     const dResp = await session.customRequest("variables", {
                         variablesReference: dInBase.variablesReference,
                     });
-                    const dVars: DapVar[] = dResp?.variables ?? [];
+                    let dVars: DapVar[] = dResp?.variables ?? [];
+                    // unwrap QArrayData intermediate level (QVector)
+                    if (dVars.length === 1 && /QArrayData/.test(dVars[0].name) &&
+                        (dVars[0].variablesReference ?? 0) > 0) {
+                        const adResp = await session.customRequest("variables", {
+                            variablesReference: dVars[0].variablesReference!,
+                        });
+                        dVars = adResp?.variables ?? [];
+                    }
                     const sizeVar = dVars.find(v => v.name === "size");
                     if (sizeVar) {
                         const n = parseInt(sizeVar.value ?? "", 10);
@@ -290,6 +309,178 @@ export async function getQContainerSize(
     logger.warn(`getQContainerSize: all strategies failed, children=[${children.map(v => v.name).join(", ")}]`);
     return 0;
 }
+
+// ── Qt container data pointer via variable tree ───────────────────────────
+
+/**
+ * Result of getQVectorDataPointer.
+ *
+ * slotStride:
+ *   0 → QVector contiguous T[] storage — caller uses sizeof(T) naturally.
+ *   8 → QList inline storage on 64-bit — each slot is 8 bytes, T data in
+ *        the low sizeof(T) bytes of each slot.  Caller must read count×8
+ *        bytes and extract sizeof(T) bytes at offset 0 per slot.
+ */
+export interface QtDataPtr {
+    ptr: string;
+    slotStride: 0 | 8;
+}
+
+/**
+ * Return true when `ref` looks like a valid 64-bit Windows user-space address.
+ * Valid addresses have the top two bytes as 0x0000 (< 128 TB).
+ * Used to distinguish real heap pointers from raw T bits embedded in void* slots
+ * (e.g. float 1.0f = 0x3F800000 stored inline → high bytes = 0xCDCDCDCD in MSVC
+ * debug builds, which is clearly outside user space).
+ */
+function isUserSpaceAddr(ref: string): boolean {
+    if (!ref || !ref.startsWith("0x")) { return false; }
+    // Pad to 16 hex digits and check top 4 digits (= top 16 bits)
+    const padded = ref.slice(2).padStart(16, "0");
+    return padded.slice(0, 4) === "0000";
+}
+
+/**
+ * Resolve the first-element address of a Qt5 QVector<T> or QList<T>
+ * without calling any member functions (works on cppvsdbg).
+ *
+ * QVector<T> (QTypedArrayData / QArrayData layout):
+ *   d → [QArrayData] → { ref, size, alloc, capacityReserved, offset }
+ *   Elements at: (uint8_t*)d + offset   (T[] contiguous)
+ *   → returns { ptr: d_addr+offset, slotStride: 0 }
+ *
+ * QList<T> where sizeof(T) <= sizeof(void*) (inline storage):
+ *   d → { ref, alloc, begin, end, void* array[] }
+ *   The T value is in the low sizeof(T) bytes of each 8-byte void* slot.
+ *   → returns { ptr: &array[begin], slotStride: 8 }
+ *
+ * QList<T> where sizeof(T) > sizeof(void*) (pointer storage):
+ *   Each array slot holds a T* to a separately heap-allocated T — not
+ *   contiguous.  Returns null.  Use QVector<T> instead.
+ */
+export async function getQVectorDataPointer(
+    session: vscode.DebugSession,
+    variablesReference: number
+): Promise<QtDataPtr | null> {
+    if (variablesReference <= 0) { return null; }
+
+    let children: DapVar[] = [];
+    try {
+        const resp = await session.customRequest("variables", { variablesReference });
+        children = resp?.variables ?? [];
+    } catch { return null; }
+
+    // ── Locate d variable (keep full DapVar for memoryReference) ─────────
+    let dVar: DapVar | undefined = children.find(v => v.name === "d");
+    let dVarRef: number = dVar?.variablesReference ?? 0;
+
+    // Strategy: look inside [QList]/[QVector] base child when d.varRef=0
+    if (dVarRef === 0) {
+        const baseNode = children.find(
+            v => /^\[?Q(?:Vector|List)/.test(v.name) && (v.variablesReference ?? 0) > 0
+        );
+        if (baseNode?.variablesReference) {
+            try {
+                const baseResp = await session.customRequest("variables", {
+                    variablesReference: baseNode.variablesReference,
+                });
+                const dInBase = (baseResp?.variables ?? [] as DapVar[]).find(
+                    (v: DapVar) => v.name === "d"
+                );
+                if (dInBase) {
+                    dVar = dInBase;
+                    dVarRef = dInBase.variablesReference ?? 0;
+                }
+            } catch { /* ignore */ }
+        }
+    }
+
+    if (dVarRef === 0) { return null; }
+
+    let dVars: DapVar[] = [];
+    try {
+        const dResp = await session.customRequest("variables", { variablesReference: dVarRef });
+        dVars = dResp?.variables ?? [];
+    } catch { return null; }
+
+    logger.debug(`getQVectorDataPointer: d children=[${dVars.map(v => v.name).join(", ")}]`);
+
+    // ── Case A: QVector (QArrayData layout) ──────────────────────────────
+    // cppvsdbg shows: d → { [QArrayData]: { ref, size, alloc, capacityReserved, offset } }
+    // Element data starts at: (uint8_t*)d + offset
+    if (dVars.length === 1 && /QArrayData/.test(dVars[0].name) &&
+        (dVars[0].variablesReference ?? 0) > 0) {
+        try {
+            const adResp = await session.customRequest("variables", {
+                variablesReference: dVars[0].variablesReference!,
+            });
+            const adVars: DapVar[] = adResp?.variables ?? [];
+            logger.debug(`getQVectorDataPointer: QArrayData children=[${adVars.map(v => v.name).join(", ")}]`);
+
+            const offsetVar = adVars.find(v => v.name === "offset");
+            // d.memoryReference is the pointer VALUE = address of the QArrayData struct
+            const dAddr = dVar?.memoryReference
+                ?? dVar?.value?.match(/^(0x[0-9a-fA-F]+)/)?.[1];
+            if (offsetVar && dAddr && isValidMemoryReference(dAddr)) {
+                const offsetVal = parseInt(offsetVar.value ?? "", 10);
+                if (!isNaN(offsetVal) && offsetVal > 0) {
+                    const ptr = "0x" + (BigInt(dAddr) + BigInt(offsetVal)).toString(16).toUpperCase();
+                    logger.debug(`getQVectorDataPointer: QVector d_addr=${dAddr} offset=${offsetVal} → data=${ptr}`);
+                    return { ptr, slotStride: 0 };
+                }
+            }
+        } catch { /* fall through */ }
+        logger.debug(`getQVectorDataPointer: QVector path — no offset found`);
+        return null;
+    }
+
+    // ── Case B: QList (QListData::Data layout) ────────────────────────────
+    // d → { ref, alloc, begin, end, void* array[] }
+    const arrayVar = dVars.find(v => v.name === "array" && (v.variablesReference ?? 0) > 0);
+    if (arrayVar?.variablesReference) {
+        const beginVar  = dVars.find(v => v.name === "begin");
+        const beginIdx  = Math.max(0, parseInt(beginVar?.value ?? "0", 10) || 0);
+        try {
+            const arrayResp = await session.customRequest("variables", {
+                variablesReference: arrayVar.variablesReference,
+            });
+            const arrayChildren: DapVar[] = arrayResp?.variables ?? [];
+            logger.debug(`getQVectorDataPointer: QList array children=[${arrayChildren.map(v => v.name).join(", ")}]`);
+
+            const firstSlot = arrayChildren.find(
+                v => v.name === `[${beginIdx}]` || (beginIdx === 0 && v.name === "[0]")
+            );
+            if (firstSlot) {
+                const slotRef = firstSlot.memoryReference ?? "";
+                // Distinguish inline vs pointer storage:
+                //   inline  — void* slot holds raw T bits (float 1.0 → 0xCDCDCDCD3F800000):
+                //             top bytes contain MSVC debug fill → NOT a valid user-space addr
+                //   pointer — void* slot holds a real heap T* (0x000001EB...):
+                //             top bytes are 0x0000 → valid Windows user-space addr
+                if (slotRef && isUserSpaceAddr(slotRef)) {
+                    // Pointer storage: each element is separately heap-allocated (sizeof(T) > 8).
+                    // Cannot read contiguous data. User should use QVector<T> instead.
+                    logger.warn(`getQVectorDataPointer: QList<large T> — pointer storage (slot=${slotRef}); use QVector<T> for visualization`);
+                    return null;
+                }
+                // Inline storage: arrayVar.memoryReference = address of array[0] slot.
+                // Stride = sizeof(void*) = 8 bytes on 64-bit.
+                const aBase = arrayVar.memoryReference;
+                if (aBase && isValidMemoryReference(aBase)) {
+                    const ptr = beginIdx === 0
+                        ? aBase
+                        : "0x" + (BigInt(aBase) + BigInt(beginIdx * 8)).toString(16).toUpperCase();
+                    logger.debug(`getQVectorDataPointer: QList inline base=${aBase} begin=${beginIdx} → ${ptr} (slotStride=8)`);
+                    return { ptr, slotStride: 8 };
+                }
+            }
+        } catch { /* fall through */ }
+    }
+
+    logger.debug(`getQVectorDataPointer: could not resolve via tree`);
+    return null;
+}
+
 
 // ── QImage variable-tree extraction ──────────────────────────────────────
 
