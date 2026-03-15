@@ -12,8 +12,8 @@
 - [Supported Compilers and Debuggers](#supported-compilers-and-debuggers)
 - [Build Configuration](#build-configuration)
   - [LLVM / Clang + CodeLLDB (Windows)](#llvm--clang--codelldb-windows)
-  - [GCC + cppdbg (Linux / macOS / WSL)](#gcc--cppdbg-linux--macos--wsl)
-  - [MSVC + cppdbg (Windows)](#msvc--cppdbg-windows)
+  - [GCC + GDB (Linux / macOS / WSL)](#gcc--gdb-linux--macos--wsl)
+  - [MSVC + vsdbg (Windows)](#msvc--vsdbg-windows)
 - [launch.json Configuration](#launchjson-configuration)
 - [Opening the Variables Panel](#opening-the-variables-panel)
 - [Visualizing a Variable](#visualizing-a-variable)
@@ -44,8 +44,8 @@
 | Compiler | Debugger | Session Type | Notes |
 |----------|----------|--------------|-------|
 | Clang/LLVM | CodeLLDB | `lldb` | Requires `-gdwarf-4 -fstandalone-debug` on Windows |
-| GCC | cppdbg + gdb | `cppdbg` | Standard DWARF, works out of the box |
-| MSVC | cppvsdbg | `cppvsdbg` | Requires Visual Studio 2019+; build with `build_msvc.bat` |
+| GCC | GDB | `cppdbg` | Standard DWARF, works out of the box |
+| MSVC | vsdbg | `cppvsdbg` | Requires Visual Studio 2019+; build with `build_msvc.bat` |
 
 > **Windows + LLVM + CodeLLDB is the recommended combination.**  
 > LLDB has limited PDB (CodeView) support; building with DWARF debug info is required
@@ -81,7 +81,7 @@ test\test_cpp\scripts\bat\build_llvm.bat
 > `-fstandalone-debug` — embed complete type definitions for types from third-party
 > (e.g. MSVC-compiled) headers so LLDB can resolve them.
 
-### GCC + cppdbg (Linux / macOS / WSL)
+### GCC + GDB (Linux / macOS / WSL)
 
 Standard Debug build works without extra flags:
 
@@ -90,7 +90,7 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 make -j$(nproc)
 ```
 
-### MSVC + cppvsdbg (Windows)
+### MSVC + vsdbg (Windows)
 
 Use the `build_msvc.bat` script:
 
@@ -138,11 +138,11 @@ cmake --build build_msvc --config Debug
 > Use `stopOnEntry` (not `stopAtEntry`) — the latter is a `cppdbg`/`cppvsdbg` property
 > and will cause a JSON schema error with CodeLLDB.
 
-### cppdbg + gdb (Linux / macOS / WSL)
+### GDB (Linux / macOS / WSL)
 
 ```jsonc
 {
-    "name": "C++ (GCC / cppdbg)",
+    "name": "C++ (GCC / GDB)",
     "type": "cppdbg",
     "request": "launch",
     "program": "${workspaceFolder}/build/demo",
@@ -154,11 +154,11 @@ cmake --build build_msvc --config Debug
 }
 ```
 
-### cppvsdbg (MSVC, Windows)
+### vsdbg (MSVC, Windows)
 
 ```jsonc
 {
-    "name": "C++ Demo (MSVC / cppvsdbg)",
+    "name": "C++ Demo (MSVC / vsdbg)",
     "type": "cppvsdbg",
     "request": "launch",
     "program": "${workspaceFolder}/build_msvc/Debug/demo.exe",

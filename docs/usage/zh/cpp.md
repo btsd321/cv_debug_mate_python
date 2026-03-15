@@ -12,8 +12,8 @@
 - [支持的编译器与调试器](#支持的编译器与调试器)
 - [编译配置](#编译配置)
   - [LLVM / Clang + CodeLLDB（Windows）](#llvm--clang--codelldbwindows)
-  - [GCC + cppdbg（Linux / macOS / WSL）](#gcc--cppdbglinux--macos--wsl)
-  - [MSVC + cppdbg（Windows）](#msvc--cppdbgwindows)
+  - [GCC + GDB（Linux / macOS / WSL）](#gcc--gdblinux--macos--wsl)
+  - [MSVC + vsdbg（Windows）](#msvc--vsdbgwindows)
 - [launch.json 配置](#launchjson-配置)
 - [打开变量面板](#打开变量面板)
 - [可视化变量](#可视化变量)
@@ -44,8 +44,8 @@
 | 编译器 | 调试器 | Session 类型 | 备注 |
 |--------|--------|--------------|------|
 | Clang/LLVM | CodeLLDB | `lldb` | Windows 下需要 `-gdwarf-4 -fstandalone-debug` |
-| GCC | cppdbg + gdb | `cppdbg` | 标准 DWARF，开箱即用 |
-| MSVC | cppvsdbg | `cppvsdbg` | 需要 Visual Studio 2019+；使用 `build_msvc.bat` 构建 |
+| GCC | GDB | `cppdbg` | 标准 DWARF，开笱即用 |
+| MSVC | vsdbg | `cppvsdbg` | 需要 Visual Studio 2019+；使用 `build_msvc.bat` 构建 |
 
 > **推荐组合：Windows + LLVM + CodeLLDB。**  
 > LLDB 对 PDB（CodeView）支持有限；在 Windows 上必须使用 DWARF 调试信息，  
@@ -81,7 +81,7 @@ test\test_cpp\scripts\bat\build_llvm.bat
 > `-fstandalone-debug` — 为第三方（如 MSVC 编译的）头文件中的类型嵌入完整类型定义，  
 > 使 LLDB 能够解析这些类型。
 
-### GCC + cppdbg（Linux / macOS / WSL）
+### GCC + GDB（Linux / macOS / WSL）
 
 标准 Debug 构建无需额外标志：
 
@@ -90,7 +90,7 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 make -j$(nproc)
 ```
 
-### MSVC + cppvsdbg（Windows）
+### MSVC + vsdbg（Windows）
 
 使用 `build_msvc.bat` 脚本：
 
@@ -138,11 +138,11 @@ cmake --build build_msvc --config Debug
 > 使用 `stopOnEntry`，而非 `stopAtEntry`——后者是 `cppdbg`/`cppvsdbg` 专有属性，  
 > 与 CodeLLDB 一起使用会导致 JSON Schema 错误。
 
-### cppdbg + gdb（Linux / macOS / WSL）
+### GDB（Linux / macOS / WSL）
 
 ```jsonc
 {
-    "name": "C++ (GCC / cppdbg)",
+    "name": "C++ (GCC / GDB)",
     "type": "cppdbg",
     "request": "launch",
     "program": "${workspaceFolder}/build/demo",
@@ -154,11 +154,11 @@ cmake --build build_msvc --config Debug
 }
 ```
 
-### cppvsdbg（MSVC，Windows）
+### vsdbg（MSVC，Windows）
 
 ```jsonc
 {
-    "name": "C++ Demo (MSVC / cppvsdbg)",
+    "name": "C++ Demo (MSVC / vsdbg)",
     "type": "cppvsdbg",
     "request": "launch",
     "program": "${workspaceFolder}/build_msvc/Debug/demo.exe",
