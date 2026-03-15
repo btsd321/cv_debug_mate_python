@@ -43,7 +43,7 @@ import {
     evaluateExpression,
 } from "../../cppDebugger";
 import { computeBounds } from "../utils";
-import { log_debug } from "../../../../log/logger";
+import { logger } from "../../../../log/logger";
 
 // ── Point type descriptors ────────────────────────────────────────────────
 
@@ -110,7 +110,7 @@ async function searchVecBeginPtr(
     try {
         const resp = await session.customRequest("variables", { variablesReference: varsRef });
         const children: VarChild[] = resp?.variables ?? [];
-        log_debug(`[PclPC] vecRaw[d=${maxDepth}]: ${children.slice(0, 6).map((c) => c.name).join(", ")}`);
+        logger.debug(`[PclPC] vecRaw[d=${maxDepth}]: ${children.slice(0, 6).map((c) => c.name).join(", ")}`);
         // Priority: check well-known begin-pointer field names first
         const BEGIN_NAMES = new Set(["_Myfirst", "_M_start", "__begin_"]);
         for (const child of children) {
@@ -187,21 +187,21 @@ async function getPclPointCount(
     // Strategy 1 — read plain struct members width & height (no function calls, LLDB-safe)
     const wStr = await evaluateExpression(session, `${varName}.width`, frameId);
     const hStr = await evaluateExpression(session, `${varName}.height`, frameId);
-    log_debug(`[PclPC] width eval="${wStr}" height eval="${hStr}"`);
+    logger.debug(`[PclPC] width eval="${wStr}" height eval="${hStr}"`);
     const w = parseInt(wStr ?? "");
     const h = parseInt(hStr ?? "");
     if (!isNaN(w) && w > 0) {
         const h2 = (!isNaN(h) && h > 1) ? h : 1;
-        log_debug(`[PclPC] point count from width*height = ${w}*${h2}=${w * h2}`);
+        logger.debug(`[PclPC] point count from width*height = ${w}*${h2}=${w * h2}`);
         return w * h2;
     }
 
     // Strategy 2 — variables tree
     const pointsChild = await expandPclPointsChild(session, variablesReference);
-    log_debug(`[PclPC] pointsChild value="${pointsChild?.value}" varsRef=${pointsChild?.variablesReference}`);
+    logger.debug(`[PclPC] pointsChild value="${pointsChild?.value}" varsRef=${pointsChild?.variablesReference}`);
     if (pointsChild) {
         const n = parseSizeFromValue(pointsChild.value);
-        log_debug(`[PclPC] parseSizeFromValue -> ${n}`);
+        logger.debug(`[PclPC] parseSizeFromValue -> ${n}`);
         if (n > 0) {
             return n;
         }
@@ -209,12 +209,12 @@ async function getPclPointCount(
 
     // Strategy 3 — evaluate expressions
     let count = await getContainerSize(session, varName, frameId);
-    log_debug(`[PclPC] getContainerSize(cloud) -> ${count}`);
+    logger.debug(`[PclPC] getContainerSize(cloud) -> ${count}`);
     if (count > 0) {
         return count;
     }
     count = await getContainerSize(session, `${varName}.points`, frameId);
-    log_debug(`[PclPC] getContainerSize(points) -> ${count}`);
+    logger.debug(`[PclPC] getContainerSize(points) -> ${count}`);
     return count;
 }
 
@@ -240,11 +240,11 @@ async function getPclDataPointer(
                 variablesReference: pointsChild.variablesReference,
             });
             const elems: VarChild[] = elemResp?.variables ?? [];
-            log_debug(`[PclPC] points children names: ${elems.slice(0, 5).map((e) => e.name).join(", ")}`);
+            logger.debug(`[PclPC] points children names: ${elems.slice(0, 5).map((e) => e.name).join(", ")}`);
             // CodeLLDB exposes std::vector data as a "[raw]" synthetic child whose
             // memoryReference points to the start of the buffer (not "[0]").
             const first = elems.find((c) => c.name === "[0]" || c.name === "[raw]");
-            log_debug(`[PclPC] [0]/[raw] memRef=${first?.memoryReference} value=${first?.value}`);
+            logger.debug(`[PclPC] [0]/[raw] memRef=${first?.memoryReference} value=${first?.value}`);
             if (first) {
                 if (first.memoryReference && isValidMemoryReference(first.memoryReference)) {
                     return first.memoryReference;
@@ -274,7 +274,7 @@ async function getPclDataPointer(
         try {
             const topResp = await session.customRequest("variables", { variablesReference });
             const topElems: Array<{ name: string; memoryReference?: string }> = topResp?.variables ?? [];
-            log_debug(`[PclPC] cloud top-level children: ${topElems.slice(0, 8).map((e) => e.name).join(", ")}`);
+            logger.debug(`[PclPC] cloud top-level children: ${topElems.slice(0, 8).map((e) => e.name).join(", ")}`);
             const first = topElems.find((c) => c.name === "[0]");
             if (first?.memoryReference && isValidMemoryReference(first.memoryReference)) {
                 return first.memoryReference;
@@ -304,7 +304,7 @@ async function getPclDataPointer(
             `(long long)&${varName}[0]`,
         ];
     const ptr = await tryGetDataPointer(session, exprs, frameId);
-    log_debug(`[PclPC] tryGetDataPointer -> ${ptr}`);
+    logger.debug(`[PclPC] tryGetDataPointer -> ${ptr}`);
     return ptr;
 }
 
@@ -369,7 +369,7 @@ export class PclPointCloudProvider implements ILibPointCloudProvider {
 
         // ── Step 1: point count ───────────────────────────────────────────────
         const pointCount = await getPclPointCount(session, varName, variablesReference, frameId);
-        log_debug(`[PclPC] pointCount=${pointCount}`);
+        logger.debug(`[PclPC] pointCount=${pointCount}`);
         if (pointCount <= 0) {
             return null;
         }
@@ -380,7 +380,7 @@ export class PclPointCloudProvider implements ILibPointCloudProvider {
 
         // ── Step 3: data pointer ──────────────────────────────────────────────
         const dataPtr = await getPclDataPointer(session, varName, variablesReference, frameId);
-        log_debug(`[PclPC] dataPtr=${dataPtr}`);        if (!dataPtr) {
+        logger.debug(`[PclPC] dataPtr=${dataPtr}`);        if (!dataPtr) {
             return null;
         }
 

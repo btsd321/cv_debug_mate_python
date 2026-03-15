@@ -2,13 +2,13 @@
  * logger.ts — Singleton logger for MatrixViewer.
  *
  * Initialised once in extension.ts `activate()`:
- *   import { logger, debug, info, warn, error } from "./log/logger";
+ *   import { logger } from "./log/logger";
  *   logger.init(vscode.window.createOutputChannel("MatrixViewer"));
  *
- * Usage anywhere else (import only the levels you need):
- *   import { debug, warn } from "../../log/logger";
- *   debug("something happened");
- *   warn(`unexpected value: ${x}`);
+ * Usage anywhere else:
+ *   import { logger } from "../../log/logger";
+ *   logger.debug("something happened");
+ *   logger.warn(`unexpected value: ${x}`);
  *
  * Level filtering (default: DEBUG — all messages pass):
  *   logger.setLevel("INFO");   // suppress DEBUG output in production
@@ -57,8 +57,3 @@ class Logger {
 
 export const logger = new Logger();
 
-// ── Module-level convenience functions ───────────────────────────────────
-export const log_debug = (msg: string): void => logger.debug(msg);
-export const log_info  = (msg: string): void => logger.info(msg);
-export const log_warn  = (msg: string): void => logger.warn(msg);
-export const log_error = (msg: string): void => logger.error(msg);

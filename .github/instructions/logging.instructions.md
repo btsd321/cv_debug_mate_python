@@ -22,13 +22,13 @@ export function activate(context: vscode.ExtensionContext) {
 
 ## 其他文件的使用方式
 
-直接 import 所需级别的函数，**不得**注入 `LogFn` 参数，**不得**使用 `console.log`。
+只 import `logger` 单例，调用对应级别的方法，**不得**注入 `LogFn` 参数，**不得**使用 `console.log`。
 
 ```typescript
-import { debug, warn } from "../../log/logger"; // 按需引入
+import { logger } from "../../log/logger"; // 按需引入
 
-debug(`fetched ${count} points`);
-warn(`unsupported type: ${typeName}`);
+logger.debug(`fetched ${count} points`);
+logger.warn(`unsupported type: ${typeName}`);
 ```
 
 ## 电平过滤

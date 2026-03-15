@@ -50,7 +50,7 @@ import {
 } from "../../cppDebugger";
 import { bufferToBase64, computeMinMax } from "../utils";
 import { qImageLayout, qImageSizeExprs, getQImageInfoFromVariables } from "./qtUtils";
-import { log_debug, log_warn } from "../../../../log/logger";
+import { logger } from "../../../../log/logger";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -156,9 +156,9 @@ export class QtImageProvider implements ILibImageProvider {
                 });
                 const topVars: { name: string; value: string; memoryReference?: string; variablesReference?: number }[] =
                     topResp?.variables ?? [];
-                log_debug(`QImage top-level children (${topVars.length}):`);
+                logger.debug(`QImage top-level children (${topVars.length}):`);
                 for (const v of topVars) {
-                    log_debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}" varRef=${v.variablesReference ?? 0}`);
+                    logger.debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}" varRef=${v.variablesReference ?? 0}`);
                 }
                 const dVar = topVars.find(v => v.name === "d");
                 if (dVar?.variablesReference && dVar.variablesReference > 0) {
@@ -167,9 +167,9 @@ export class QtImageProvider implements ILibImageProvider {
                     });
                     const dVars: { name: string; value: string; memoryReference?: string; variablesReference?: number }[] =
                         dResp?.variables ?? [];
-                    log_debug(`QImage d-ptr children (${dVars.length}):`);
+                    logger.debug(`QImage d-ptr children (${dVars.length}):`);
                     for (const v of dVars) {
-                        log_debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}" varRef=${v.variablesReference ?? 0}`);
+                        logger.debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}" varRef=${v.variablesReference ?? 0}`);
                     }
                     // Also expand "data" child if present
                     const dataVar = dVars.find(v => v.name === "data");
@@ -179,14 +179,14 @@ export class QtImageProvider implements ILibImageProvider {
                         });
                         const dataVars: { name: string; value: string; memoryReference?: string }[] =
                             dataResp?.variables ?? [];
-                        log_debug(`QImage d->data children (${dataVars.length}):`);
+                        logger.debug(`QImage d->data children (${dataVars.length}):`);
                         for (const v of dataVars) {
-                            log_debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}"`);
+                            logger.debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}"`);
                         }
                     }
                 }
             } catch (e) {
-                log_debug(`QImage variable tree dump failed: ${e}`);
+                logger.debug(`QImage variable tree dump failed: ${e}`);
             }
             // ── End diagnostic ───────────────────────────────────────────
 
@@ -197,7 +197,7 @@ export class QtImageProvider implements ILibImageProvider {
                 fmt        = qi.format;
                 totalBytes = qi.totalBytes;
                 dataPtr    = qi.dataPtr;
-                log_debug(`QImage variables-tree: ${width}x${height} fmt=${fmt} bytes=${totalBytes} ptr=${dataPtr}`);
+                logger.debug(`QImage variables-tree: ${width}x${height} fmt=${fmt} bytes=${totalBytes} ptr=${dataPtr}`);
             }
         }
 
@@ -207,22 +207,22 @@ export class QtImageProvider implements ILibImageProvider {
             height = await evalInt(session, `${varName}.height()`, frameId);
             fmt    = await evalInt(session, `(int)${varName}.format()`, frameId)
                   ?? await evalInt(session, `${varName}.format()`, frameId);
-            log_debug(`QImage expr-eval: ${width}x${height} fmt=${fmt}`);
+            logger.debug(`QImage expr-eval: ${width}x${height} fmt=${fmt}`);
         }
 
         if (width === null || height === null || fmt === null) {
-            log_warn(`QImage: failed to read geometry for ${varName}`);
+            logger.warn(`QImage: failed to read geometry for ${varName}`);
             return null;
         }
         if (width <= 0 || height <= 0) {
-            log_warn(`QImage: invalid size ${width}x${height} for ${varName}`);
+            logger.warn(`QImage: invalid size ${width}x${height} for ${varName}`);
             return null;
         }
 
         // ── Step 2: format layout ────────────────────────────────────────
         const layout = qImageLayout(fmt);
         if (!layout) {
-            log_warn(`QImage: unsupported format ${fmt} for ${varName}`);
+            logger.warn(`QImage: unsupported format ${fmt} for ${varName}`);
             return null;
         }
         const { bytesPerPixel, channels, isUint8 } = layout;
@@ -242,14 +242,14 @@ export class QtImageProvider implements ILibImageProvider {
             );
         }
         if (!dataPtr) {
-            log_warn(`QImage: could not resolve data pointer for ${varName}`);
+            logger.warn(`QImage: could not resolve data pointer for ${varName}`);
             return null;
         }
 
         // ── Step 5: read memory ──────────────────────────────────────────
         const buffer = await readMemoryChunked(session, dataPtr, totalBytes);
         if (!buffer) {
-            log_warn(`QImage: readMemory failed for ${varName}`);
+            logger.warn(`QImage: readMemory failed for ${varName}`);
             return null;
         }
 
@@ -258,7 +258,7 @@ export class QtImageProvider implements ILibImageProvider {
 
         const expectedBytes = width * height * bytesPerPixel;
         if (buffer.length < expectedBytes) {
-            log_warn(`QImage: buffer too small (${buffer.length} < ${expectedBytes}) for ${varName}`);
+            logger.warn(`QImage: buffer too small (${buffer.length} < ${expectedBytes}) for ${varName}`);
             return null;
         }
 

@@ -44,7 +44,7 @@ import {
     qtScalarToDtype,
     getQContainerSize,
 } from "./qtUtils";
-import { log_debug, log_warn } from "../../../../log/logger";
+import { logger } from "../../../../log/logger";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -110,10 +110,10 @@ export class QtPlotProvider implements ILibPlotProvider {
             count = await getQContainerSize(session, info.variablesReference!);
         }
         if (count <= 0) {
-            log_warn(`QtPlotProvider: size() returned 0 for ${varName}`);
+            logger.warn(`QtPlotProvider: size() returned 0 for ${varName}`);
             return null;
         }
-        log_debug(`QtPlotProvider: ${varName} type="${typeStr}" count=${count}`);
+        logger.debug(`QtPlotProvider: ${varName} type="${typeStr}" count=${count}`);
         // ── Step 2: classify and determine memory layout ──────────────────
         const is2DScatter = isQVectorOf2D(typeStr) || isQPolygonF(typeStr);
 
@@ -146,19 +146,19 @@ export class QtPlotProvider implements ILibPlotProvider {
         // ── Step 3: data pointer ──────────────────────────────────────────
         const dataPtr = await getDataPointer(session, varName, info);
         if (!dataPtr) {
-            log_warn(`QtPlotProvider: could not resolve data pointer for ${varName}`);
+            logger.warn(`QtPlotProvider: could not resolve data pointer for ${varName}`);
             return null;
         }
-        log_debug(`QtPlotProvider: ${is2DScatter ? "2D scatter" : "1D"} dtype=${dtype} stride=${strideBytes} ptr=${dataPtr}`);
+        logger.debug(`QtPlotProvider: ${is2DScatter ? "2D scatter" : "1D"} dtype=${dtype} stride=${strideBytes} ptr=${dataPtr}`);
 
         // ── Step 4: read memory ───────────────────────────────────────────
         const totalBytes = count * strideBytes;
         const buffer = await readMemoryChunked(session, dataPtr, totalBytes);
         if (!buffer) {
-            log_warn(`QtPlotProvider: readMemory failed for ${varName}`);
+            logger.warn(`QtPlotProvider: readMemory failed for ${varName}`);
             return null;
         }
-        log_debug(`QtPlotProvider: read ${buffer.length} bytes`);
+        logger.debug(`QtPlotProvider: read ${buffer.length} bytes`);
 
         // ── Step 5: parse PlotData ────────────────────────────────────────
         if (is2DScatter) {
@@ -175,7 +175,7 @@ export class QtPlotProvider implements ILibPlotProvider {
                     ? view.getFloat64(base + yOffset, true)
                     : view.getFloat32(base + yOffset, true);
             }
-            log_debug(`QtPlotProvider: returning 2D scatter length=${count}`);
+            logger.debug(`QtPlotProvider: returning 2D scatter length=${count}`);
             return {
                 xValues,
                 yValues,
@@ -188,7 +188,7 @@ export class QtPlotProvider implements ILibPlotProvider {
 
         // 1D scalar array
         const yValues = typedBufferToNumbers(buffer, dtype);
-        log_debug(`QtPlotProvider: returning 1D plot length=${count}`);
+        logger.debug(`QtPlotProvider: returning 1D plot length=${count}`);
         return {
             yValues,
             dtype,
