@@ -14,13 +14,15 @@ import { ILibImageProvider } from "../ILibProviders";
 import { OpenCvImageProvider } from "./libs/opencv/imageProvider";
 import { EigenImageProvider } from "./libs/eigen/imageProvider";
 import { StdImageProvider } from "./libs/std/imageProvider";
+import { QtImageProvider } from "./libs/qt/imageProvider";
 
-// ── Provider registry ─────────────────────────────────────────────────────
+// ── Provider registry ───────────────────────────────────────────
 
 const LIB_IMAGE_PROVIDERS: ILibImageProvider[] = [
     new OpenCvImageProvider(),
     new EigenImageProvider(),
     new StdImageProvider(),
+    new QtImageProvider(),
 ];
 
 // ── Coordinator ───────────────────────────────────────────────────────────

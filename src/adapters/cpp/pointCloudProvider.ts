@@ -13,15 +13,17 @@ import { PointCloudData } from "../../viewers/viewerTypes";
 import { ILibPointCloudProvider } from "../ILibProviders";
 import { PclPointCloudProvider } from "./libs/pcl/pointCloudProvider";
 import { StdPointCloudProvider } from "./libs/std/pointCloudProvider";
+import { QtPointCloudProvider } from "./libs/qt/pointCloudProvider";
 
 type LogFn = (level: "DEBUG" | "INFO" | "WARN" | "ERROR", msg: string) => void;
 
-// ── Provider registry ─────────────────────────────────────────────────────
+// ── Provider registry ───────────────────────────────────────────
 
 function buildProviders(log: LogFn): ILibPointCloudProvider[] {
     return [
         new PclPointCloudProvider(log),
         new StdPointCloudProvider(),
+        new QtPointCloudProvider(log),
     ];
 }
 

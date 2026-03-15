@@ -10,10 +10,10 @@
 
 | 功能模块 | C++ 版 | Python 版对应 |
 |---------|--------|--------------|
-| **1D 曲线图** | `std::vector<T>`, `std::array<T,N>`, `T[N]`, `std::set<T>`, `Eigen::VectorX*`, `Eigen::Matrix<T,N,1>` | `list`, `tuple`, `np.ndarray` (1D), `array.array` |
-| **2D 散点图** | `Eigen::Matrix<T,N,2>` (N×2，列0=X，列1=Y) | `np.ndarray` (N,2), `list` of 2-tuples |
-| **2D 图像** | `cv::Mat`, `T[H][W]`, `std::array<std::array<T>>`, `Eigen::Matrix<T,R,C>` (rows>1, cols>2) | `PIL.Image`, `torch.Tensor` (2D/3D/4D), `cv2.UMat`/`GpuMat` |
-| **3D 点云** | `std::vector<cv::Point3f>` | `np.ndarray` (N,3/6), `list` of 3-tuples, `open3d.geometry.PointCloud` |
+| **1D 曲线图** | `std::vector<T>`, `std::array<T,N>`, `T[N]`, `std::set<T>`, `Eigen::VectorX*`, `Eigen::Matrix<T,N,1>`, `QVector<T>`, `QList<T>` | `list`, `tuple`, `np.ndarray` (1D), `array.array` |
+| **2D 散点图** | `Eigen::Matrix<T,N,2>` (N×2，列0=X，列1=Y), `QPolygonF`, `QVector<QVector2D>` | `np.ndarray` (N,2), `list` of 2-tuples |
+| **2D 图像** | `cv::Mat`, `T[H][W]`, `std::array<std::array<T>>`, `Eigen::Matrix<T,R,C>` (rows>1, cols>2), `QImage` | `PIL.Image`, `torch.Tensor` (2D/3D/4D), `cv2.UMat`/`GpuMat` |
+| **3D 点云** | `std::vector<cv::Point3f>`, `QVector<QVector3D>` | `np.ndarray` (N,3/6), `list` of 3-tuples, `open3d.geometry.PointCloud` |
 | **变量面板** | TreeView 自动检测当前作用域变量 | TreeView 自动检测当前作用域变量 |
 | **视图同步** | 配对变量联动缩放/平移 | 配对变量联动缩放/平移 |
 | **自动刷新** | 单步调试自动更新 | 单步调试自动更新 |
@@ -32,6 +32,7 @@
 | `cv2.UMat` | OpenCV UMat（CPU 透明 API） | 已实现 |
 | `cv2.cuda.GpuMat` | OpenCV GPU 矩阵 | 已实现 |
 | `Eigen::Matrix<T,R,C>` / `Eigen::Array<T,R,C>` (rows>1, cols>2) | 单通道灰度图（自动开启归一化） | 已实现 |
+| `QImage` (Qt5 / Qt6) | Qt 图像，支持 Format_Grayscale8 / RGB32 / ARGB32 / RGB888 等格式，兼容 Qt5 (`byteCount()`) 和 Qt6 (`sizeInBytes()`) | 计划中 |
 
 > **注意**：`numpy.ndarray` 不再作为图像类型直接可视化。  
 > 如需将 numpy 图像数据可视化，请使用 `PIL.Image.fromarray()` 或 `cv2.UMat()` 包装。
@@ -50,6 +51,9 @@
 | `Eigen::VectorX*` / `Eigen::RowVectorX*` | 1D 折线图 | 已实现 |
 | `Eigen::Matrix<T,N,1>` 或 `Eigen::Matrix<T,1,N>` | 1D 折线图 | 已实现 |
 | `Eigen::Matrix<T,N,2>` (N×2，列0=X，列1=Y) | 2D 散点图 | 已实现 |
+| `QVector<T>` / `QList<T>`（T 为数值类型，Qt5/Qt6）| 1D 折线图；Qt6 中 `QVector` = `QList`，类型字符串两者均需匹配 | 计划中 |
+| `QPolygonF`（= `QList<QPointF>`） | 2D 散点图（x=QPointF.x, y=QPointF.y） | 计划中 |
+| `QVector<QVector2D>` / `QList<QVector2D>` | 2D 散点图（x=x(), y=y()） | 计划中 |
 
 > **Eigen 路由规则**（Layer-2 运行时检测，查询 `.rows()` / `.cols()`）：
 >
@@ -67,6 +71,7 @@
 | `np.ndarray` shape `(N, 6)` | XYZ + RGB 点云 | 已实现 |
 | `list` / `tuple` of 3-element seqs | 点云列表 | 已实现 |
 | `open3d.geometry.PointCloud` | open3d 点云（含可选颜色） | 已实现 |
+| `QVector<QVector3D>` / `QList<QVector3D>`（Qt5/Qt6）| XYZ 点云（x=x(), y=y(), z=z()） | 计划中 |
 
 ---
 
@@ -351,6 +356,44 @@ Webview 渲染
   - `cols==2` → 2D 散点图（Eigen 列优先：X=col0, Y=col1）
 - [x] `Eigen::Matrix` / `Eigen::Array` (rows>1, cols>2) 图像数据获取（`libs/eigen/imageProvider.ts`）
 - [x] `pcl::PointCloud<PointXYZ/XYZRGB/XYZRGBA/XYZI>` 点云数据获取（`libs/pcl/pointCloudProvider.ts`）
+
+### Phase 6：Qt5 / Qt6 C++ 类型支持
+
+> 所有实现位于 `src/adapters/cpp/libs/qt/`，兼容 Qt5 与 Qt6。
+
+#### 类型检测（`cppTypes.ts`）
+- [x] Layer-1 识别 `QImage`（类型字符串匹配）
+- [x] Layer-1 识别 `QVector<T>` / `QList<T>`（数值类型，Qt6 中两者合并）
+- [x] Layer-1 识别 `QPolygonF`
+- [x] Layer-1 识别 `QVector<QVector2D>` / `QList<QVector2D>`
+- [x] Layer-1 识别 `QVector<QVector3D>` / `QList<QVector3D>`
+
+#### 实现文件
+- [x] `libs/qt/qtUtils.ts` — Qt 类型辅助：`QtImageFormat` 枚举、`getQImageInfo()`（兼容 `byteCount()` / `sizeInBytes()`）
+- [x] `libs/qt/imageProvider.ts` — `QImage` → `ImageData`
+  - 通过 DAP evaluate 读取 `width()` / `height()` / `format()`
+  - Qt5：用 `byteCount()` 获取字节数；Qt6：用 `sizeInBytes()`（fallback 到 `byteCount()`）
+  - 通过 `readMemory` 读取 `bits()` 指针处的像素缓冲区
+  - 支持格式：`Format_Grayscale8`（1ch uint8）、`Format_RGB32` / `Format_ARGB32`（4ch）、`Format_RGB888`（3ch uint8）
+- [x] `libs/qt/plotProvider.ts` — `QVector<T>` / `QList<T>` / `QPolygonF` / `QVector<QVector2D>` → `PlotData`
+  - `QVector<T>` / `QList<T>`（数值型）：通过 `size()` + `data()` 指针读取连续内存 → 1D 折线图
+  - `QPolygonF`：同上，每元素为 `QPointF`（8 字节 = 2×double） → 2D 散点图
+  - `QVector<QVector2D>`：每元素为 `QVector2D`（8 字节 = 2×float） → 2D 散点图
+- [x] `libs/qt/pointCloudProvider.ts` — `QVector<QVector3D>` / `QList<QVector3D>` → `PointCloudData`
+  - 通过 `size()` + `data()` 指针读取连续内存，每元素 12 字节（3×float）
+
+#### 协调器注册
+- [x] `src/adapters/cpp/imageProvider.ts` — 将 `QtImageProvider` 追加到 `LIB_IMAGE_PROVIDERS`
+- [x] `src/adapters/cpp/plotProvider.ts` — 将 `QtPlotProvider` 追加到 `LIB_PLOT_PROVIDERS`
+- [x] `src/adapters/cpp/pointCloudProvider.ts` — 将 `QtPointCloudProvider` 追加到 `LIB_POINTCLOUD_PROVIDERS`
+
+#### Qt5 / Qt6 兼容性说明
+| 方面 | Qt5 | Qt6 | 处理方式 |
+|------|-----|-----|----------|
+| `byteCount()` | 存在 | 废弃，改用 `sizeInBytes()` | evaluate 先尝试 `sizeInBytes()`，失败则 fallback 到 `byteCount()` |
+| `QVector<T>` 类型字符串 | `QVector<float>` | `QList<float>` 或 `QVector<float>` | Layer-1 正则同时匹配两者 |
+| `QPolygonF` 基类 | `QVector<QPointF>` | `QList<QPointF>` | 直接遍历 `size()` + `data()` 即可，无需区分 |
+| `QImage::bits()` 返回类型 | `uchar*` | `uchar*` | 无差别 |
 
 ---
 

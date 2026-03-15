@@ -13,12 +13,14 @@ import { PlotData } from "../../viewers/viewerTypes";
 import { ILibPlotProvider } from "../ILibProviders";
 import { EigenPlotProvider } from "./libs/eigen/plotProvider";
 import { StdPlotProvider } from "./libs/std/plotProvider";
+import { QtPlotProvider } from "./libs/qt/plotProvider";
 
-// ── Provider registry ─────────────────────────────────────────────────────
+// ── Provider registry ───────────────────────────────────────────
 
 const LIB_PLOT_PROVIDERS: ILibPlotProvider[] = [
     new EigenPlotProvider(),
     new StdPlotProvider(),
+    new QtPlotProvider(),
 ];
 
 // ── Coordinator ───────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ dist/
 .venv/
 test/test_python/.vscode/launch.json
 c_cpp_properties.json
+docs\requirements.md
 
 *.db
 *.db-shm

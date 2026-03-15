@@ -68,11 +68,16 @@ src/
 │           │   └── plotProvider.ts
 │           ├── pcl/          # pcl::PointCloud (TODO)
 │           │   └── pointCloudProvider.ts
-│           └── std/          # C++ standard library types
-│               ├── stdUtils.ts          # Pure type-detection (std::vector, std::array, C-style arrays, Point3)
-│               ├── plotProvider.ts      # std::vector<T>, std::array<T,N>, T[N] → PlotData
-│               ├── imageProvider.ts     # 2D/3D std::array, T[H][W], T[H][W][C] → ImageData
-│               └── pointCloudProvider.ts # std::vector<Point3f/d>, std::array<Point3f/d,N> → PointCloudData
+│           ├── std/          # C++ standard library types
+│           │   ├── stdUtils.ts          # Pure type-detection (std::vector, std::array, C-style arrays, Point3)
+│           │   ├── plotProvider.ts      # std::vector<T>, std::array<T,N>, T[N] → PlotData
+│           │   ├── imageProvider.ts     # 2D/3D std::array, T[H][W], T[H][W][C] → ImageData
+│           │   └── pointCloudProvider.ts # std::vector<Point3f/d>, std::array<Point3f/d,N> → PointCloudData
+│           └── qt/           # Qt5 / Qt6 types
+│               ├── qtUtils.ts           # QImage format enum, qImageLayout, qVectorElementType helpers
+│               ├── imageProvider.ts     # QImage → ImageData (bits() + sizeInBytes/byteCount)
+│               ├── plotProvider.ts      # QVector<T>/QList<T>/QPolygonF/QVector<QVector2D> → PlotData
+│               └── pointCloudProvider.ts # QVector<QVector3D>/QList<QVector3D> → PointCloudData
 ├── viewers/
 │   └── viewerTypes.ts        # Language-agnostic display data contracts (ImageData, PlotData, PointCloudData)
 ├── utils/
