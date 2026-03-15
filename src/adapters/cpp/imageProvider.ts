@@ -16,9 +16,9 @@ import { EigenImageProvider } from "./libs/eigen/imageProvider";
 import { StdImageProvider } from "./libs/std/imageProvider";
 import { QtImageProvider } from "./libs/qt/imageProvider";
 
-// ── Provider registry ───────────────────────────────────────────
+// ── Provider registry ───────────────────────────────────────────────
 
-const LIB_IMAGE_PROVIDERS: ILibImageProvider[] = [
+const PROVIDERS: ILibImageProvider[] = [
     new OpenCvImageProvider(),
     new EigenImageProvider(),
     new StdImageProvider(),
@@ -33,7 +33,7 @@ export async function fetchCppImageData(
     info: VariableInfo
 ): Promise<ImageData | null> {
     const typeName = info.typeName ?? info.type;
-    for (const provider of LIB_IMAGE_PROVIDERS) {
+    for (const provider of PROVIDERS) {
         if (provider.canHandle(typeName)) {
             return provider.fetchImageData(session, varName, info);
         }

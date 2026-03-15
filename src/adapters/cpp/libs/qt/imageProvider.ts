@@ -49,10 +49,8 @@ import {
     tryGetDataPointer,
 } from "../../cppDebugger";
 import { bufferToBase64, computeMinMax } from "../utils";
-import { qImageLayout, qImageSizeExprs } from "./qtUtils";
-
-type LogFn = (level: "DEBUG" | "INFO" | "WARN" | "ERROR", msg: string) => void;
-const noop: LogFn = () => undefined;
+import { qImageLayout, qImageSizeExprs, getQImageInfoFromVariables } from "./qtUtils";
+import { debug, warn } from "../../../../log/logger";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -67,7 +65,15 @@ async function evalInt(
 ): Promise<number | null> {
     const res = await evaluateExpression(session, expr, frameId);
     if (res === null) { return null; }
-    const n = parseInt(res.replace(/[^0-9-]/g, ""), 10);
+    // cppvsdbg returns enum values like "QImage::Format_Grayscale8 (24)";
+    // extract the numeric value from the trailing parentheses if present.
+    const parenMatch = res.match(/\((-?\d+)\)\s*$/);
+    if (parenMatch) {
+        const n = parseInt(parenMatch[1], 10);
+        return isNaN(n) ? null : n;
+    }
+    // Pure numeric string (GDB / LLDB / cppvsdbg with int cast)
+    const n = parseInt(res.trim(), 10);
     return isNaN(n) ? null : n;
 }
 
@@ -103,9 +109,12 @@ function bitsPointerExprs(
         ];
     }
     if (isUsingMSVC(session)) {
+        // cppvsdbg: expression returning a pointer naturally gives "0x..." in
+        // result / memoryReference.  (long long) cast would return a decimal
+        // integer that tryGetDataPointer cannot parse.
         return [
-            `(long long)${varName}.bits()`,
-            `reinterpret_cast<long long>(${varName}.bits())`,
+            `${varName}.bits()`,        // uchar* → hex address in cppvsdbg
+            `${varName}.d->data`,       // direct d-pointer; no function call needed
         ];
     }
     // cppdbg / GDB
@@ -119,9 +128,6 @@ function bitsPointerExprs(
 // ── Provider ─────────────────────────────────────────────────────────────
 
 export class QtImageProvider implements ILibImageProvider {
-    private readonly log: LogFn;
-    constructor(log: LogFn = noop) { this.log = log; }
-
     canHandle(typeName: string): boolean {
         return /\bQImage\b/.test(typeName);
     }
@@ -133,65 +139,130 @@ export class QtImageProvider implements ILibImageProvider {
     ): Promise<ImageData | null> {
         const frameId = info.frameId;
 
-        // ── Step 1: geometry ─────────────────────────────────────────────
-        const width  = await evalInt(session, `${varName}.width()`,  frameId);
-        const height = await evalInt(session, `${varName}.height()`, frameId);
-        const fmt    = await evalInt(session, `(int)${varName}.format()`, frameId)
-                    ?? await evalInt(session, `${varName}.format()`, frameId);
+        // ── Step 1: QImage metadata ──────────────────────────────────────
+        // Prefer walking the DAP variable tree (reliable in cppvsdbg where
+        // member-function calls in `evaluate` often fail).
+        let width: number | null = null;
+        let height: number | null = null;
+        let fmt: number | null = null;
+        let totalBytes = 0;
+        let dataPtr: string | null = null;
+
+        if (info.variablesReference && info.variablesReference > 0) {
+            // ── Diagnostic: dump raw variable tree ───────────────────────
+            try {
+                const topResp = await session.customRequest("variables", {
+                    variablesReference: info.variablesReference,
+                });
+                const topVars: { name: string; value: string; memoryReference?: string; variablesReference?: number }[] =
+                    topResp?.variables ?? [];
+                debug(`QImage top-level children (${topVars.length}):`);
+                for (const v of topVars) {
+                    debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}" varRef=${v.variablesReference ?? 0}`);
+                }
+                const dVar = topVars.find(v => v.name === "d");
+                if (dVar?.variablesReference && dVar.variablesReference > 0) {
+                    const dResp = await session.customRequest("variables", {
+                        variablesReference: dVar.variablesReference,
+                    });
+                    const dVars: { name: string; value: string; memoryReference?: string; variablesReference?: number }[] =
+                        dResp?.variables ?? [];
+                    debug(`QImage d-ptr children (${dVars.length}):`);
+                    for (const v of dVars) {
+                        debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}" varRef=${v.variablesReference ?? 0}`);
+                    }
+                    // Also expand "data" child if present
+                    const dataVar = dVars.find(v => v.name === "data");
+                    if (dataVar?.variablesReference && dataVar.variablesReference > 0) {
+                        const dataResp = await session.customRequest("variables", {
+                            variablesReference: dataVar.variablesReference,
+                        });
+                        const dataVars: { name: string; value: string; memoryReference?: string }[] =
+                            dataResp?.variables ?? [];
+                        debug(`QImage d->data children (${dataVars.length}):`);
+                        for (const v of dataVars) {
+                            debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}"`);
+                        }
+                    }
+                }
+            } catch (e) {
+                debug(`QImage variable tree dump failed: ${e}`);
+            }
+            // ── End diagnostic ───────────────────────────────────────────
+
+            const qi = await getQImageInfoFromVariables(session, info.variablesReference);
+            if (qi) {
+                width      = qi.width;
+                height     = qi.height;
+                fmt        = qi.format;
+                totalBytes = qi.totalBytes;
+                dataPtr    = qi.dataPtr;
+                debug(`QImage variables-tree: ${width}x${height} fmt=${fmt} bytes=${totalBytes} ptr=${dataPtr}`);
+            }
+        }
+
+        // ── Fallback: expression-based evaluation ────────────────────────
+        if (width === null || height === null || fmt === null) {
+            width  = await evalInt(session, `${varName}.width()`,  frameId);
+            height = await evalInt(session, `${varName}.height()`, frameId);
+            fmt    = await evalInt(session, `(int)${varName}.format()`, frameId)
+                  ?? await evalInt(session, `${varName}.format()`, frameId);
+            debug(`QImage expr-eval: ${width}x${height} fmt=${fmt}`);
+        }
 
         if (width === null || height === null || fmt === null) {
-            this.log("WARN", `QImage: failed to read geometry for ${varName}`);
+            warn(`QImage: failed to read geometry for ${varName}`);
             return null;
         }
         if (width <= 0 || height <= 0) {
-            this.log("WARN", `QImage: invalid size ${width}x${height} for ${varName}`);
+            warn(`QImage: invalid size ${width}x${height} for ${varName}`);
             return null;
         }
 
         // ── Step 2: format layout ────────────────────────────────────────
         const layout = qImageLayout(fmt);
         if (!layout) {
-            this.log("WARN", `QImage: unsupported format ${fmt} for ${varName}`);
+            warn(`QImage: unsupported format ${fmt} for ${varName}`);
             return null;
         }
         const { bytesPerPixel, channels, isUint8 } = layout;
 
-        // ── Step 3: byte count ───────────────────────────────────────────
-        // QImage rows may be padded; sizeInBytes() is authoritative.
-        const minBytes = width * height * bytesPerPixel;
-        const totalBytes = await getQImageByteCount(session, varName, minBytes, frameId);
+        // ── Step 3: total byte count ─────────────────────────────────────
+        if (totalBytes <= 0) {
+            const minBytes = width * height * bytesPerPixel;
+            totalBytes = await getQImageByteCount(session, varName, minBytes, frameId);
+        }
 
         // ── Step 4: bits() pointer ───────────────────────────────────────
-        const dataPtr = await tryGetDataPointer(
-            session,
-            bitsPointerExprs(session, varName),
-            frameId
-        );
         if (!dataPtr) {
-            this.log("WARN", `QImage: could not resolve bits() pointer for ${varName}`);
+            dataPtr = await tryGetDataPointer(
+                session,
+                bitsPointerExprs(session, varName),
+                frameId
+            );
+        }
+        if (!dataPtr) {
+            warn(`QImage: could not resolve data pointer for ${varName}`);
             return null;
         }
 
         // ── Step 5: read memory ──────────────────────────────────────────
         const buffer = await readMemoryChunked(session, dataPtr, totalBytes);
         if (!buffer) {
-            this.log("WARN", `QImage: readMemory failed for ${varName}`);
+            warn(`QImage: readMemory failed for ${varName}`);
             return null;
         }
 
         const dtype = "uint8";
         const { dataMin, dataMax } = computeMinMax(buffer, dtype);
 
-        // When the buffer is padded (stride > width * bpp), we still pass the
-        // full buffer; the image viewer will only display width * height pixels
-        // correctly if the stride matches. For simplicity, skip padded images.
         const expectedBytes = width * height * bytesPerPixel;
         if (buffer.length < expectedBytes) {
-            this.log("WARN", `QImage: buffer too small (${buffer.length} < ${expectedBytes}) for ${varName}`);
+            warn(`QImage: buffer too small (${buffer.length} < ${expectedBytes}) for ${varName}`);
             return null;
         }
 
-        // If padded, crop to the tightly-packed region row-by-row.
+        // Crop padded rows to a tight buffer the viewer can render directly.
         let finalBuffer = buffer;
         if (buffer.length > expectedBytes) {
             const stride = Math.floor(totalBytes / height);

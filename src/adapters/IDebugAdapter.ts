@@ -104,7 +104,6 @@ export interface IDebugAdapter {
     fetchPointCloudData(
         session: vscode.DebugSession,
         varName: string,
-        info: VariableInfo,
-        log?: (level: "DEBUG" | "INFO" | "WARN" | "ERROR", msg: string) => void
+        info: VariableInfo
     ): Promise<PointCloudData | null>;
 }

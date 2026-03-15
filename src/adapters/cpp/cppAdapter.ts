@@ -138,9 +138,8 @@ export class CppAdapter implements IDebugAdapter {
     async fetchPointCloudData(
         session: vscode.DebugSession,
         varName: string,
-        info: VariableInfo,
-        log?: (level: "DEBUG" | "INFO" | "WARN" | "ERROR", msg: string) => void
+        info: VariableInfo
     ): Promise<PointCloudData | null> {
-        return fetchCppPointCloudData(session, varName, info, log);
+        return fetchCppPointCloudData(session, varName, info);
     }
 }

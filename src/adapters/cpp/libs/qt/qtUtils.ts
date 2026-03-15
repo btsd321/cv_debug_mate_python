@@ -1,15 +1,17 @@
 /**
  * qt/qtUtils.ts — Qt-specific helpers shared by all Qt lib providers.
  *
- * Pure functions only; no VS Code API, no async.
- *
  * Covers:
  *   - QImage::Format enum values (Qt5 = Qt6, layout unchanged)
  *   - Selecting the correct byte-size expression (Qt5: byteCount, Qt6: sizeInBytes)
  *   - Extracting the element type from QVector<T> / QList<T> type strings
  *   - Deciding whether a type string is a Qt numeric 1D container vs. a
  *     2D scatter container vs. a 3D point-cloud container
+ *   - Walking the DAP variable tree to extract QImage metadata (async)
  */
+
+import * as vscode from "vscode";
+import { isValidMemoryReference } from "../../cppDebugger";
 
 // ── QImage Format constants ──────────────────────────────────────────────
 // Values match QImage::Format enum defined in qimage.h (stable across Qt5/Qt6).
@@ -164,4 +166,161 @@ export function qtScalarToDtype(scalar: string): string {
     if (t === "unsigned short" || t === "quint16") { return "uint16"; }
     if (t === "long long" || t === "qint64") { return "int32"; } // clamp to int32 for viewer
     return "float32";
+}
+
+// ── QImage variable-tree extraction ──────────────────────────────────────
+
+export interface QImageInfo {
+    width: number;
+    height: number;
+    /** QImage::Format enum integer value */
+    format: number;
+    /** Bytes per scan line (may include row padding) */
+    bytesPerLine: number;
+    /** Total pixel buffer size in bytes */
+    totalBytes: number;
+    /** Hex memory reference for the pixel data buffer */
+    dataPtr: string;
+}
+
+type DapVar = {
+    name: string;
+    value: string;
+    memoryReference?: string;
+    variablesReference?: number;
+};
+
+/**
+ * Parse a QImage::Format integer from varied debugger representations:
+ *   - Plain integer:                   "24"
+ *   - Enum label with value in parens: "QImage::Format_Grayscale8 (24)"
+ *   - Hex:                             "0x18"
+ */
+export function parseQImageFormat(valueStr: string): number | null {
+    if (!valueStr) { return null; }
+    // "SomeName (24)" — parenthesized numeric value at end (cppvsdbg enum display)
+    const parenMatch = valueStr.match(/\((-?\d+)\)\s*$/);
+    if (parenMatch) {
+        const n = parseInt(parenMatch[1], 10);
+        return isNaN(n) ? null : n;
+    }
+    // Plain decimal integer
+    const n = parseInt(valueStr.trim(), 10);
+    if (!isNaN(n)) { return n; }
+    // Hex
+    if (/^0x[0-9a-fA-F]+$/i.test(valueStr.trim())) {
+        return parseInt(valueStr.trim(), 16);
+    }
+    return null;
+}
+
+/**
+ * Extract all QImageInfo fields from a flat list of DAP variables
+ * (the children of QImageData).
+ */
+function extractFromDVars(vars: DapVar[]): QImageInfo | null {
+    let width = 0, height = 0, format = -1, bytesPerLine = 0, totalBytes = 0;
+    let dataPtr = "";
+
+    for (const v of vars) {
+        if (v.name === "width") {
+            width = parseInt(v.value) || 0;
+        } else if (v.name === "height") {
+            height = parseInt(v.value) || 0;
+        } else if (v.name === "format") {
+            const fmt = parseQImageFormat(v.value);
+            if (fmt !== null) { format = fmt; }
+        } else if (v.name === "bytes_per_line") {
+            bytesPerLine = parseInt(v.value) || 0;
+        } else if (v.name === "nbytes") {
+            totalBytes = parseInt(v.value) || 0;
+        } else if (v.name === "data") {
+            // Prefer DAP memoryReference; fall back to hex in value string
+            if (v.memoryReference && isValidMemoryReference(v.memoryReference)) {
+                dataPtr = v.memoryReference;
+            } else {
+                const ptrMatch = v.value?.match(/0x[0-9a-fA-F]+/);
+                if (ptrMatch && isValidMemoryReference(ptrMatch[0])) {
+                    dataPtr = ptrMatch[0];
+                }
+            }
+        }
+    }
+
+    if (width <= 0 || height <= 0 || format < 0 || !dataPtr) { return null; }
+
+    const layout = qImageLayout(format);
+    if (!layout) { return null; }
+
+    if (bytesPerLine <= 0) { bytesPerLine = width * layout.bytesPerPixel; }
+    if (totalBytes <= 0)   { totalBytes   = bytesPerLine * height; }
+
+    return { width, height, format, bytesPerLine, totalBytes, dataPtr };
+}
+
+/**
+ * Walk the DAP variable tree for a QImage to extract its metadata without
+ * calling any member functions (which cppvsdbg often cannot evaluate).
+ *
+ * Qt5 QImage uses the pimpl pattern: QImage → d (QImageData*) which holds:
+ *   data           uchar*
+ *   width / height int
+ *   format         QImage::Format  (int enum)
+ *   bytes_per_line int
+ *   nbytes         qsizetype / int
+ *
+ * Falls back to reading fields at the top level in case natvis expands them
+ * there directly.
+ */
+export async function getQImageInfoFromVariables(
+    session: vscode.DebugSession,
+    variablesReference: number
+): Promise<QImageInfo | null> {
+    try {
+        const resp = await session.customRequest("variables", { variablesReference });
+        const topVars: DapVar[] = resp?.variables ?? [];
+
+        // ── Try Qt5 pimpl: QImage → d → QImageData children ─────────────
+        const dVar = topVars.find(v => v.name === "d");
+        if (dVar?.variablesReference && dVar.variablesReference > 0) {
+            try {
+                const dResp = await session.customRequest("variables", {
+                    variablesReference: dVar.variablesReference,
+                });
+                const dVars: DapVar[] = dResp?.variables ?? [];
+
+                // If data pointer is missing via value string, try expanding the
+                // `data` node — cppvsdbg may place the memoryReference there.
+                const dataVar = dVars.find(v => v.name === "data");
+                if (dataVar && !dataVar.memoryReference && !(dataVar.value?.match(/0x[0-9a-fA-F]+/)) &&
+                    dataVar.variablesReference && dataVar.variablesReference > 0) {
+                    try {
+                        const dataChildren = await session.customRequest("variables", {
+                            variablesReference: dataVar.variablesReference,
+                        });
+                        for (const dc of dataChildren?.variables ?? []) {
+                            if (dc.memoryReference && isValidMemoryReference(dc.memoryReference)) {
+                                // Inject memoryReference back so extractFromDVars picks it up
+                                dataVar.memoryReference = dc.memoryReference;
+                                break;
+                            }
+                            const p = dc.value?.match(/0x[0-9a-fA-F]+/);
+                            if (p && isValidMemoryReference(p[0])) {
+                                dataVar.value = dc.value;
+                                break;
+                            }
+                        }
+                    } catch { /* ignore */ }
+                }
+
+                const info = extractFromDVars(dVars);
+                if (info) { return info; }
+            } catch { /* fall through */ }
+        }
+
+        // ── Fallback: natvis may expose QImageData fields at top level ───
+        return extractFromDVars(topVars);
+    } catch {
+        return null;
+    }
 }

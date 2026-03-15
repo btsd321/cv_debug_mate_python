@@ -15,28 +15,23 @@ import { PclPointCloudProvider } from "./libs/pcl/pointCloudProvider";
 import { StdPointCloudProvider } from "./libs/std/pointCloudProvider";
 import { QtPointCloudProvider } from "./libs/qt/pointCloudProvider";
 
-type LogFn = (level: "DEBUG" | "INFO" | "WARN" | "ERROR", msg: string) => void;
+// ── Provider registry ───────────────────────────────────────────────
 
-// ── Provider registry ───────────────────────────────────────────
-
-function buildProviders(log: LogFn): ILibPointCloudProvider[] {
-    return [
-        new PclPointCloudProvider(log),
-        new StdPointCloudProvider(),
-        new QtPointCloudProvider(log),
-    ];
-}
+const PROVIDERS: ILibPointCloudProvider[] = [
+    new PclPointCloudProvider(),
+    new StdPointCloudProvider(),
+    new QtPointCloudProvider(),
+];
 
 // ── Coordinator ───────────────────────────────────────────────────────────
 
 export async function fetchCppPointCloudData(
     session: vscode.DebugSession,
     varName: string,
-    info: VariableInfo,
-    log: LogFn = () => undefined
+    info: VariableInfo
 ): Promise<PointCloudData | null> {
     const typeName = info.typeName ?? info.type;
-    for (const provider of buildProviders(log)) {
+    for (const provider of PROVIDERS) {
         if (provider.canHandle(typeName)) {
             return provider.fetchPointCloudData(session, varName, info);
         }

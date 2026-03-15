@@ -43,9 +43,7 @@ import {
     qVectorElementType,
     qtScalarToDtype,
 } from "./qtUtils";
-
-type LogFn = (level: "DEBUG" | "INFO" | "WARN" | "ERROR", msg: string) => void;
-const noop: LogFn = () => undefined;
+import { warn } from "../../../../log/logger";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -86,9 +84,6 @@ function bytesForDtype(dtype: string): number {
 // ── Provider ──────────────────────────────────────────────────────────────
 
 export class QtPlotProvider implements ILibPlotProvider {
-    private readonly log: LogFn;
-    constructor(log: LogFn = noop) { this.log = log; }
-
     canHandle(typeName: string): boolean {
         return (
             isQVectorNumericScalar(typeName) ||
@@ -110,7 +105,7 @@ export class QtPlotProvider implements ILibPlotProvider {
         // ── Step 1: element count ─────────────────────────────────────────
         const count = await getContainerSize(session, varName, frameId);
         if (count <= 0) {
-            this.log("WARN", `QtPlotProvider: size() returned 0 for ${varName}`);
+            warn(`QtPlotProvider: size() returned 0 for ${varName}`);
             return null;
         }
 
@@ -146,7 +141,7 @@ export class QtPlotProvider implements ILibPlotProvider {
         // ── Step 3: data pointer ──────────────────────────────────────────
         const dataPtr = await getDataPointer(session, varName, info);
         if (!dataPtr) {
-            this.log("WARN", `QtPlotProvider: could not resolve data pointer for ${varName}`);
+            warn(`QtPlotProvider: could not resolve data pointer for ${varName}`);
             return null;
         }
 
@@ -154,7 +149,7 @@ export class QtPlotProvider implements ILibPlotProvider {
         const totalBytes = count * strideBytes;
         const buffer = await readMemoryChunked(session, dataPtr, totalBytes);
         if (!buffer) {
-            this.log("WARN", `QtPlotProvider: readMemory failed for ${varName}`);
+            warn(`QtPlotProvider: readMemory failed for ${varName}`);
             return null;
         }
 

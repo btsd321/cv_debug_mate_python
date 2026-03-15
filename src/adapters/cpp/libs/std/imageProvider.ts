@@ -56,6 +56,7 @@ function bytesPerDtype(dtype: string): number {
 // ── Provider ──────────────────────────────────────────────────────────────
 
 export class StdImageProvider implements ILibImageProvider {
+
     canHandle(typeName: string): boolean {
         return (
             is2DStdArray(typeName).is2DArray ||

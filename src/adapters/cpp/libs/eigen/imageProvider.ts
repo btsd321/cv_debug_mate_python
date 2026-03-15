@@ -26,9 +26,8 @@ import { readMemoryChunked } from "../../cppDebugger";
 import { bufferToBase64, computeMinMax } from "../utils";
 import { eigenDtype, bytesPerEigenDtype, evalEigenDim, getEigenDataPointer } from "./eigenUtils";
 
-// ── Provider ──────────────────────────────────────────────────────────────
-
 export class EigenImageProvider implements ILibImageProvider {
+
     canHandle(typeName: string): boolean {
         // Handle 2D Matrix / Array types only (not Vector / RowVector — those go to plot).
         return /\bEigen::(Matrix|Array)/.test(typeName);
