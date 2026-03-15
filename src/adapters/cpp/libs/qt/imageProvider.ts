@@ -50,7 +50,7 @@ import {
 } from "../../cppDebugger";
 import { bufferToBase64, computeMinMax } from "../utils";
 import { qImageLayout, qImageSizeExprs, getQImageInfoFromVariables } from "./qtUtils";
-import { debug, warn } from "../../../../log/logger";
+import { log_debug, log_warn } from "../../../../log/logger";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -156,9 +156,9 @@ export class QtImageProvider implements ILibImageProvider {
                 });
                 const topVars: { name: string; value: string; memoryReference?: string; variablesReference?: number }[] =
                     topResp?.variables ?? [];
-                debug(`QImage top-level children (${topVars.length}):`);
+                log_debug(`QImage top-level children (${topVars.length}):`);
                 for (const v of topVars) {
-                    debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}" varRef=${v.variablesReference ?? 0}`);
+                    log_debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}" varRef=${v.variablesReference ?? 0}`);
                 }
                 const dVar = topVars.find(v => v.name === "d");
                 if (dVar?.variablesReference && dVar.variablesReference > 0) {
@@ -167,9 +167,9 @@ export class QtImageProvider implements ILibImageProvider {
                     });
                     const dVars: { name: string; value: string; memoryReference?: string; variablesReference?: number }[] =
                         dResp?.variables ?? [];
-                    debug(`QImage d-ptr children (${dVars.length}):`);
+                    log_debug(`QImage d-ptr children (${dVars.length}):`);
                     for (const v of dVars) {
-                        debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}" varRef=${v.variablesReference ?? 0}`);
+                        log_debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}" varRef=${v.variablesReference ?? 0}`);
                     }
                     // Also expand "data" child if present
                     const dataVar = dVars.find(v => v.name === "data");
@@ -179,14 +179,14 @@ export class QtImageProvider implements ILibImageProvider {
                         });
                         const dataVars: { name: string; value: string; memoryReference?: string }[] =
                             dataResp?.variables ?? [];
-                        debug(`QImage d->data children (${dataVars.length}):`);
+                        log_debug(`QImage d->data children (${dataVars.length}):`);
                         for (const v of dataVars) {
-                            debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}"`);
+                            log_debug(`  [${v.name}] value="${v.value}" memRef="${v.memoryReference ?? ""}"`);
                         }
                     }
                 }
             } catch (e) {
-                debug(`QImage variable tree dump failed: ${e}`);
+                log_debug(`QImage variable tree dump failed: ${e}`);
             }
             // ── End diagnostic ───────────────────────────────────────────
 
@@ -197,7 +197,7 @@ export class QtImageProvider implements ILibImageProvider {
                 fmt        = qi.format;
                 totalBytes = qi.totalBytes;
                 dataPtr    = qi.dataPtr;
-                debug(`QImage variables-tree: ${width}x${height} fmt=${fmt} bytes=${totalBytes} ptr=${dataPtr}`);
+                log_debug(`QImage variables-tree: ${width}x${height} fmt=${fmt} bytes=${totalBytes} ptr=${dataPtr}`);
             }
         }
 
@@ -207,22 +207,22 @@ export class QtImageProvider implements ILibImageProvider {
             height = await evalInt(session, `${varName}.height()`, frameId);
             fmt    = await evalInt(session, `(int)${varName}.format()`, frameId)
                   ?? await evalInt(session, `${varName}.format()`, frameId);
-            debug(`QImage expr-eval: ${width}x${height} fmt=${fmt}`);
+            log_debug(`QImage expr-eval: ${width}x${height} fmt=${fmt}`);
         }
 
         if (width === null || height === null || fmt === null) {
-            warn(`QImage: failed to read geometry for ${varName}`);
+            log_warn(`QImage: failed to read geometry for ${varName}`);
             return null;
         }
         if (width <= 0 || height <= 0) {
-            warn(`QImage: invalid size ${width}x${height} for ${varName}`);
+            log_warn(`QImage: invalid size ${width}x${height} for ${varName}`);
             return null;
         }
 
         // ── Step 2: format layout ────────────────────────────────────────
         const layout = qImageLayout(fmt);
         if (!layout) {
-            warn(`QImage: unsupported format ${fmt} for ${varName}`);
+            log_warn(`QImage: unsupported format ${fmt} for ${varName}`);
             return null;
         }
         const { bytesPerPixel, channels, isUint8 } = layout;
@@ -242,14 +242,14 @@ export class QtImageProvider implements ILibImageProvider {
             );
         }
         if (!dataPtr) {
-            warn(`QImage: could not resolve data pointer for ${varName}`);
+            log_warn(`QImage: could not resolve data pointer for ${varName}`);
             return null;
         }
 
         // ── Step 5: read memory ──────────────────────────────────────────
         const buffer = await readMemoryChunked(session, dataPtr, totalBytes);
         if (!buffer) {
-            warn(`QImage: readMemory failed for ${varName}`);
+            log_warn(`QImage: readMemory failed for ${varName}`);
             return null;
         }
 
@@ -258,7 +258,7 @@ export class QtImageProvider implements ILibImageProvider {
 
         const expectedBytes = width * height * bytesPerPixel;
         if (buffer.length < expectedBytes) {
-            warn(`QImage: buffer too small (${buffer.length} < ${expectedBytes}) for ${varName}`);
+            log_warn(`QImage: buffer too small (${buffer.length} < ${expectedBytes}) for ${varName}`);
             return null;
         }
 

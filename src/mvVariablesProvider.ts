@@ -10,7 +10,7 @@ import * as vscode from "vscode";
 
 import { getAdapter } from "./adapters/adapterRegistry";
 import { PanelManager } from "./utils/panelManager";
-import { debug } from "./log/logger";
+import { log_debug } from "./log/logger";
 
 // ── Tree Node Types ────────────────────────────────────────────────────────
 
@@ -204,7 +204,7 @@ export class MvVariablesProvider
         // are visible in the MatrixViewer output channel.
         // Label "r2" confirms this version of the code is running.
         for (const v of rawVars) {
-            debug(`[autoDetect-r2] var="${v.name}" type="${v.type ?? "(empty)"}"`);
+            log_debug(`[autoDetect-r2] var="${v.name}" type="${v.type ?? "(empty)"}"`);
         }
 
         const newItems: MvVariableItem[] = [];

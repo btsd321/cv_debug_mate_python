@@ -30,8 +30,8 @@ import {
     tryGetDataPointer,
 } from "../../cppDebugger";
 import { computeBounds } from "../utils";
-import { isQVectorOf3D } from "./qtUtils";
-import { warn } from "../../../../log/logger";
+import { isQVectorOf3D, getQContainerSize } from "./qtUtils";
+import { log_debug, log_warn } from "../../../../log/logger";
 
 // QVector3D = { float xp; float yp; float zp; } — 12 bytes, no padding
 const QVECTOR3D_STRIDE = 12;
@@ -77,16 +77,20 @@ export class QtPointCloudProvider implements ILibPointCloudProvider {
         const frameId = info.frameId;
 
         // ── Step 1: element count ─────────────────────────────────────────
-        const count = await getContainerSize(session, varName, frameId);
+        let count = await getContainerSize(session, varName, frameId);
+        if (count <= 0 && (info.variablesReference ?? 0) > 0) {
+            count = await getQContainerSize(session, info.variablesReference!);
+        }
         if (count <= 0) {
-            warn(`QtPointCloudProvider: size() returned 0 for ${varName}`);
+            log_warn(`QtPointCloudProvider: size() returned 0 for ${varName}`);
             return null;
         }
+        log_debug(`QtPointCloudProvider: ${varName} count=${count}`);
 
         // ── Step 2: data pointer ──────────────────────────────────────────
         const dataPtr = await getDataPointer(session, varName, info);
         if (!dataPtr) {
-            warn(`QtPointCloudProvider: could not resolve data pointer for ${varName}`);
+            log_warn(`QtPointCloudProvider: could not resolve data pointer for ${varName}`);
             return null;
         }
 
@@ -94,7 +98,7 @@ export class QtPointCloudProvider implements ILibPointCloudProvider {
         const totalBytes = count * QVECTOR3D_STRIDE;
         const buffer = await readMemoryChunked(session, dataPtr, totalBytes);
         if (!buffer) {
-            warn(`QtPointCloudProvider: readMemory failed for ${varName}`);
+            log_warn(`QtPointCloudProvider: readMemory failed for ${varName}`);
             return null;
         }
 
@@ -105,11 +109,12 @@ export class QtPointCloudProvider implements ILibPointCloudProvider {
         const xyzValues = Array.from(floats) as number[];
 
         if (xyzValues.length < count * 3) {
-            warn(`QtPointCloudProvider: unexpected buffer size for ${varName}`);
+            log_warn(`QtPointCloudProvider: unexpected buffer size for ${varName}`);
             return null;
         }
 
         const bounds = computeBounds(xyzValues);
+        log_debug(`QtPointCloudProvider: returning ${count} points bounds x[${bounds.xMin.toFixed(2)},${bounds.xMax.toFixed(2)}] y[${bounds.yMin.toFixed(2)},${bounds.yMax.toFixed(2)}] z[${bounds.zMin.toFixed(2)},${bounds.zMax.toFixed(2)}]`);
 
         return {
             xyzValues,

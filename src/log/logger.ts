@@ -58,7 +58,7 @@ class Logger {
 export const logger = new Logger();
 
 // ── Module-level convenience functions ───────────────────────────────────
-export const debug = (msg: string): void => logger.debug(msg);
-export const info  = (msg: string): void => logger.info(msg);
-export const warn  = (msg: string): void => logger.warn(msg);
-export const error = (msg: string): void => logger.error(msg);
+export const log_debug = (msg: string): void => logger.debug(msg);
+export const log_info  = (msg: string): void => logger.info(msg);
+export const log_warn  = (msg: string): void => logger.warn(msg);
+export const log_error = (msg: string): void => logger.error(msg);

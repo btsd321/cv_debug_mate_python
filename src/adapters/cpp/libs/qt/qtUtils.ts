@@ -12,6 +12,7 @@
 
 import * as vscode from "vscode";
 import { isValidMemoryReference } from "../../cppDebugger";
+import { log_debug, log_warn } from "../../../../log/logger";
 
 // ── QImage Format constants ──────────────────────────────────────────────
 // Values match QImage::Format enum defined in qimage.h (stable across Qt5/Qt6).
@@ -168,6 +169,128 @@ export function qtScalarToDtype(scalar: string): string {
     return "float32";
 }
 
+// ── Qt container size via variable tree ──────────────────────────────────
+
+/**
+ * Determine the element count of a QVector<T> / QList<T> by walking the DAP
+ * variable tree.  Used as a fallback when expression-based `.size()` fails
+ * (e.g. cppvsdbg cannot call member functions in `evaluate`).
+ *
+ * Two strategies are attempted in order:
+ *
+ * 1. **d-ptr fields** — Qt5 QListData::Data stores `begin` and `end` integers;
+ *    size = end − begin.  Qt5 QVector stores `d->size` directly.
+ *
+ * 2. **Indexed children** — cppvsdbg (with natvis) exposes elements as `[0]`,
+ *    `[1]`, …; count the highest index + 1.  Works for small containers only,
+ *    because the debugger may cap the number of displayed children.
+ *
+ * Returns 0 when neither strategy succeeds.
+ */
+export async function getQContainerSize(
+    session: vscode.DebugSession,
+    variablesReference: number
+): Promise<number> {
+    if (variablesReference <= 0) { return 0; }
+
+    let children: DapVar[] = [];
+    try {
+        const resp = await session.customRequest("variables", { variablesReference });
+        children = resp?.variables ?? [];
+    } catch { return 0; }
+
+    log_debug(`getQContainerSize: top children=[${children.map(v => v.name).join(", ")}]`);
+
+    // ── Strategy 1a: QVector<T> style — d->size ──────────────────────────
+    // Qt5 QVector: d (QVectorData*) → { ref, size, alloc, … }
+    const dVar = children.find(v => v.name === "d" && (v.variablesReference ?? 0) > 0);
+    if (dVar?.variablesReference) {
+        try {
+            const dResp = await session.customRequest("variables", {
+                variablesReference: dVar.variablesReference,
+            });
+            const dVars: DapVar[] = dResp?.variables ?? [];
+            log_debug(`getQContainerSize: d-ptr children=[${dVars.map(v => v.name).join(", ")}]`);
+
+            // Qt5 QVector: d->size
+            const sizeVar = dVars.find(v => v.name === "size");
+            if (sizeVar) {
+                const n = parseInt(sizeVar.value ?? "", 10);
+                if (!isNaN(n) && n >= 0) {
+                    log_debug(`getQContainerSize: d->size=${n}`);
+                    return n;
+                }
+            }
+
+            // Qt5 QList: d->begin, d->end  →  size = end - begin
+            const beginVar = dVars.find(v => v.name === "begin");
+            const endVar   = dVars.find(v => v.name === "end");
+            if (beginVar && endVar) {
+                const b = parseInt(beginVar.value ?? "", 10);
+                const e = parseInt(endVar.value   ?? "", 10);
+                if (!isNaN(b) && !isNaN(e) && e >= b) {
+                    log_debug(`getQContainerSize: d->end(${e}) - d->begin(${b}) = ${e - b}`);
+                    return e - b;
+                }
+            }
+        } catch { /* fall through */ }
+    }
+
+    // ── Strategy 1b: cppvsdbg may surface d with varRef=0; try [QList]  ──
+    if (!dVar) {
+        const qlistBase = children.find(
+            v => /^\[Q(?:Vector|List)\]$/.test(v.name) && (v.variablesReference ?? 0) > 0
+        );
+        if (qlistBase?.variablesReference) {
+            log_debug(`getQContainerSize: trying [QList/QVector] base varRef=${qlistBase.variablesReference}`);
+            try {
+                const baseResp = await session.customRequest("variables", {
+                    variablesReference: qlistBase.variablesReference,
+                });
+                const baseVars: DapVar[] = baseResp?.variables ?? [];
+                const dInBase = baseVars.find(v => v.name === "d" && (v.variablesReference ?? 0) > 0);
+                if (dInBase?.variablesReference) {
+                    const dResp = await session.customRequest("variables", {
+                        variablesReference: dInBase.variablesReference,
+                    });
+                    const dVars: DapVar[] = dResp?.variables ?? [];
+                    const sizeVar = dVars.find(v => v.name === "size");
+                    if (sizeVar) {
+                        const n = parseInt(sizeVar.value ?? "", 10);
+                        if (!isNaN(n) && n >= 0) {
+                            log_debug(`getQContainerSize: base d->size=${n}`);
+                            return n;
+                        }
+                    }
+                    const beginVar = dVars.find(v => v.name === "begin");
+                    const endVar   = dVars.find(v => v.name === "end");
+                    if (beginVar && endVar) {
+                        const b = parseInt(beginVar.value ?? "", 10);
+                        const e = parseInt(endVar.value   ?? "", 10);
+                        if (!isNaN(b) && !isNaN(e) && e >= b) {
+                            log_debug(`getQContainerSize: base d->end-begin = ${e - b}`);
+                            return e - b;
+                        }
+                    }
+                }
+            } catch { /* fall through */ }
+        }
+    }
+
+    // ── Strategy 2: count [N] indexed children ────────────────────────────
+    // Works when natvis expands elements directly + display limit >= size.
+    const indexed = children.filter(v => /^\[\d+\]$/.test(v.name));
+    if (indexed.length > 0) {
+        const maxIdx = Math.max(...indexed.map(v => parseInt(v.name.slice(1, -1), 10)));
+        const n = maxIdx + 1;
+        log_debug(`getQContainerSize: indexed children count=${n} (may be capped)`);
+        return n;
+    }
+
+    log_warn(`getQContainerSize: all strategies failed, children=[${children.map(v => v.name).join(", ")}]`);
+    return 0;
+}
+
 // ── QImage variable-tree extraction ──────────────────────────────────────
 
 export interface QImageInfo {
@@ -282,12 +405,39 @@ export async function getQImageInfoFromVariables(
 
         // ── Try Qt5 pimpl: QImage → d → QImageData children ─────────────
         const dVar = topVars.find(v => v.name === "d");
-        if (dVar?.variablesReference && dVar.variablesReference > 0) {
+        let dVarRef = dVar?.variablesReference ?? 0;
+
+        // cppvsdbg often shows `d` at top level with variablesReference=0 (the
+        // pointer value is displayed but the struct is not expandable from here).
+        // However the hidden `[QImage]` base-class child (cppvsdbg raw expansion)
+        // usually has a `d` with a proper variablesReference.  Resolve it first.
+        if (dVarRef === 0) {
+            const qimageBase = topVars.find(v => v.name === "[QImage]" && (v.variablesReference ?? 0) > 0);
+            if (qimageBase?.variablesReference) {
+                log_debug(`getQImageInfoFromVariables: d varRef=0, trying [QImage] base varRef=${qimageBase.variablesReference}`);
+                try {
+                    const baseResp = await session.customRequest("variables", {
+                        variablesReference: qimageBase.variablesReference,
+                    });
+                    const baseVars: DapVar[] = baseResp?.variables ?? [];
+                    log_debug(`getQImageInfoFromVariables: [QImage] base children: [${baseVars.map(v => v.name).join(", ")}]`);
+                    const dInBase = baseVars.find(v => v.name === "d" && (v.variablesReference ?? 0) > 0);
+                    if (dInBase?.variablesReference) {
+                        dVarRef = dInBase.variablesReference;
+                        log_debug(`getQImageInfoFromVariables: resolved d via [QImage] varRef=${dVarRef}`);
+                    }
+                } catch { /* fall through */ }
+            }
+        }
+
+        if (dVarRef > 0) {
+            log_debug(`getQImageInfoFromVariables: found d-ptr varRef=${dVarRef}`);
             try {
                 const dResp = await session.customRequest("variables", {
-                    variablesReference: dVar.variablesReference,
+                    variablesReference: dVarRef,
                 });
                 const dVars: DapVar[] = dResp?.variables ?? [];
+                log_debug(`getQImageInfoFromVariables: d-ptr has ${dVars.length} children: [${dVars.map(v => v.name).join(", ")}]`);
 
                 // If data pointer is missing via value string, try expanding the
                 // `data` node — cppvsdbg may place the memoryReference there.
@@ -302,11 +452,13 @@ export async function getQImageInfoFromVariables(
                             if (dc.memoryReference && isValidMemoryReference(dc.memoryReference)) {
                                 // Inject memoryReference back so extractFromDVars picks it up
                                 dataVar.memoryReference = dc.memoryReference;
+                                log_debug(`getQImageInfoFromVariables: data ptr via child memRef=${dc.memoryReference}`);
                                 break;
                             }
                             const p = dc.value?.match(/0x[0-9a-fA-F]+/);
                             if (p && isValidMemoryReference(p[0])) {
                                 dataVar.value = dc.value;
+                                log_debug(`getQImageInfoFromVariables: data ptr via child value=${dc.value}`);
                                 break;
                             }
                         }
@@ -314,12 +466,21 @@ export async function getQImageInfoFromVariables(
                 }
 
                 const info = extractFromDVars(dVars);
-                if (info) { return info; }
+                if (info) {
+                    log_debug(`getQImageInfoFromVariables: pimpl OK ${info.width}x${info.height} fmt=${info.format} bytes=${info.totalBytes} ptr=${info.dataPtr}`);
+                    return info;
+                }
+                log_warn(`getQImageInfoFromVariables: extractFromDVars failed on d-ptr children`);
             } catch { /* fall through */ }
+        } else {
+            log_debug(`getQImageInfoFromVariables: no expandable d-ptr found, topVars=[${topVars.map(v => v.name).join(", ")}]`);
         }
 
         // ── Fallback: natvis may expose QImageData fields at top level ───
-        return extractFromDVars(topVars);
+        log_debug(`getQImageInfoFromVariables: trying top-level natvis fallback`);
+        const topInfo = extractFromDVars(topVars);
+        if (!topInfo) { log_warn(`getQImageInfoFromVariables: could not extract QImageInfo from variable tree`); }
+        return topInfo;
     } catch {
         return null;
     }
