@@ -48,6 +48,10 @@ export function unwrapSmartPointer(typeName: string): SmartPtrUnwrapResult | nul
         { prefix: "std::__1::shared_ptr",    kind: "deref" },   // libc++ (LLDB/macOS)
         { prefix: "std::unique_ptr",         kind: "deref" },
         { prefix: "std::__1::unique_ptr",    kind: "deref" },
+        // libc++ internal alias for unique_ptr: std::_MakeUniq<T>::__single_object
+        // LLDB reports `auto p = make_unique<T>()` with this type string.
+        { prefix: "std::_MakeUniq",          kind: "deref" },
+        { prefix: "std::__1::_MakeUniq",     kind: "deref" },
         { prefix: "std::weak_ptr",           kind: "lock_deref" },
         { prefix: "std::__1::weak_ptr",      kind: "lock_deref" },
         { prefix: "boost::shared_ptr",       kind: "deref" },

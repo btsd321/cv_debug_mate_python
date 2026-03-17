@@ -27,7 +27,7 @@ import { PlotData } from "../../../../../viewers/viewerTypes";
 import { ILibPlotProvider } from "../../../../ILibProviders";
 import { readMemoryChunked } from "../../debugger";
 import { typedBufferToNumbers, computeStats } from "../utils";
-import { eigenDtype, bytesPerEigenDtype, evalEigenDim, getEigenDataPointer } from "./eigenUtils";
+import { eigenDtype, bytesPerEigenDtype, evalEigenDim, getEigenDataPointer, parseEigenCompileTimeDims } from "./eigenUtils";
 
 // ── Provider ──────────────────────────────────────────────────────────────
 
@@ -54,6 +54,17 @@ export class EigenPlotProvider implements ILibPlotProvider {
         } else {
             rows = await evalEigenDim(session, varName, "rows", frameId);
             cols = await evalEigenDim(session, varName, "cols", frameId);
+        }
+
+        // Fallback: parse compile-time dims from type template string.
+        // Needed for fixed-size Eigen types (e.g. VectorXd ColsAtCompileTime=1)
+        // when unwrapped from a smart pointer.
+        if (rows <= 0 || cols <= 0) {
+            const ctDims = parseEigenCompileTimeDims(typeStr);
+            if (ctDims) {
+                if (rows <= 0 && ctDims[0] > 0) { rows = ctDims[0]; }
+                if (cols <= 0 && ctDims[1] > 0) { cols = ctDims[1]; }
+            }
         }
 
         if (rows <= 0 || cols <= 0) {

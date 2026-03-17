@@ -27,7 +27,7 @@ import { PlotData } from "../../../../../viewers/viewerTypes";
 import { ILibPlotProvider } from "../../../../ILibProviders";
 import { readMemoryChunked } from "../../debugger";
 import { typedBufferToNumbers, computeStats } from "../utils";
-import { eigenDtype, bytesPerEigenDtype, evalEigenDim, getEigenDataPointer, getEigenInfoFromTree } from "./eigenUtils";
+import { eigenDtype, bytesPerEigenDtype, evalEigenDim, getEigenDataPointer, getEigenInfoFromTree, parseEigenCompileTimeDims } from "./eigenUtils";
 import { logger } from "../../../../../log/logger";
 
 // ── Provider ──────────────────────────────────────────────────────────────
@@ -59,7 +59,20 @@ export class EigenPlotProvider implements ILibPlotProvider {
         }
         logger.debug(`[EigenPlot] ${varName}: rows=${rows} cols=${cols} from eval`);
 
-        // Fallback: variables tree (LLDB on Windows/MSVC — all evaluations return null)
+        // Fallback 1: parse compile-time dims from type template string.
+        // Required for e.g. VectorXd (ColsAtCompileTime=1) where m_storage.m_cols
+        // does not exist, and also when variablesReference was cleared to 0 after
+        // smart-pointer unwrapping in the coordinator.
+        if (rows <= 0 || cols <= 0) {
+            const ctDims = parseEigenCompileTimeDims(typeStr);
+            if (ctDims) {
+                if (rows <= 0 && ctDims[0] > 0) { rows = ctDims[0]; }
+                if (cols <= 0 && ctDims[1] > 0) { cols = ctDims[1]; }
+            }
+            logger.debug(`[EigenPlot] ${varName}: after compile-time fallback rows=${rows} cols=${cols}`);
+        }
+
+        // Fallback 2: variables tree (LLDB on Windows/MSVC — all evaluations return null)
         if ((rows <= 0 || cols <= 0) && (info.variablesReference ?? 0) > 0) {
             // Derive compile-time cols from type string.
             // Full template:  Eigen::Matrix<T, Rows, Cols, ...>

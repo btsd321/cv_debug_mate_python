@@ -41,6 +41,7 @@ import { fetchMsvcImageData } from "./cppvsdbg/imageProvider";
 import { fetchMsvcPlotData } from "./cppvsdbg/plotProvider";
 import { fetchMsvcPointCloudData } from "./cppvsdbg/pointCloudProvider";
 import { enrichMsvcVariableInfo } from "./cppvsdbg/variableInfoEnrichers";
+import { unwrapSmartPointer } from "./shared/utils";
 
 export class CppAdapter implements IDebugAdapter {
     isSupportedSession(session: vscode.DebugSession): boolean {
@@ -82,8 +83,14 @@ export class CppAdapter implements IDebugAdapter {
         // For Eigen types, query runtime .rows() / .cols() so Layer-2
         // detectVisualizableType can distinguish line / scatter / image.
         if (/Eigen::(Matrix|Array|Vector|RowVector)/i.test(info.typeName ?? info.type)) {
-            const rows = await this._evalEigenDim(session, varName, "rows", info.frameId);
-            const cols = await this._evalEigenDim(session, varName, "cols", info.frameId);
+            // If the Eigen object is wrapped in a smart pointer, evaluate dimensions
+            // via the dereference expression so member access works correctly.
+            const ptrUnwrapped = unwrapSmartPointer(info.typeName ?? info.type);
+            const eigenVarName = ptrUnwrapped !== null
+                ? (ptrUnwrapped.kind === "lock_deref" ? `(*${varName}.lock())` : `(*${varName})`)
+                : varName;
+            const rows = await this._evalEigenDim(session, eigenVarName, "rows", info.frameId);
+            const cols = await this._evalEigenDim(session, eigenVarName, "cols", info.frameId);
             if (rows > 0 && cols > 0) {
                 info.shape = [rows, cols];
             }

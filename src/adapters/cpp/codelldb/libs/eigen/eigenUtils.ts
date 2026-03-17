@@ -83,6 +83,27 @@ export async function evalEigenDim(
     return 0;
 }
 
+// ── Compile-time dimension parser ────────────────────────────────────────
+
+/**
+ * Parse compile-time [Rows, Cols] from an Eigen type template string.
+ * Returns [rows, cols] where a value > 0 means fixed at compile time.
+ * Dynamic (-1) and unresolvable dimensions return -1.
+ * Returns null when the type string is not a recognised Eigen template.
+ *
+ * Examples:
+ *   "Eigen::Matrix<double, -1, 1, 0, -1, 1>"  → [-1, 1]  (VectorXd)
+ *   "Eigen::Matrix<double, -1, -1, 0, -1, -1>" → [-1, -1] (MatrixXd)
+ *   "Eigen::Matrix<float, 4, 1, 0, 4, 1>"      → [4, 1]   (Vector4f)
+ */
+export function parseEigenCompileTimeDims(typeStr: string): [number, number] | null {
+    const m = typeStr.match(/Eigen::(?:Matrix|Array)\s*<[^,]+,\s*(-?\d+),\s*(-?\d+)/);
+    if (m) { return [parseInt(m[1]), parseInt(m[2])]; }
+    if (/Eigen::RowVector/.test(typeStr)) { return [1, -1]; }
+    if (/Eigen::Vector/.test(typeStr))    { return [-1, 1]; }
+    return null;
+}
+
 // ── Data pointer ──────────────────────────────────────────────────────────
 
 /**

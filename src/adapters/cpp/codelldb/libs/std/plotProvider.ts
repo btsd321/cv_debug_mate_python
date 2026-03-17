@@ -74,6 +74,15 @@ async function getDataPointer(
         `&${varName}[0]`,
         `${varName}.data()`,
     ];
+    // For weak_ptr lock_deref (*xxx.lock()): .lock() fails in LLDB.
+    // Use internal raw pointer (_M_ptr / __ptr_) directly.
+    const lockDerefM = varName.match(/^\(\*(.+)\.lock\(\)\)$/);
+    if (lockDerefM) {
+        const wpName = lockDerefM[1];
+        for (const ptrField of ["_M_ptr", "__ptr_"]) {
+            exprs.push(`${wpName}.${ptrField}->data()`, `${wpName}.${ptrField}[0]`);
+        }
+    }
     return tryGetDataPointer(session, exprs, info.frameId);
 }
 

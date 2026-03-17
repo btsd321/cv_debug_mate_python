@@ -32,7 +32,9 @@ export async function fetchLldbImageData(
     if (unwrapped !== null) {
         resolvedName = unwrapped.kind === "lock_deref" ? `(*${varName}.lock())` : `(*${varName})`;
         typeName = unwrapped.innerType;
-        resolvedInfo = { ...info, typeName: unwrapped.innerType, type: unwrapped.innerType, variablesReference: 0 };
+        // Keep variablesReference: CodeLLDB synthetic formatters expose the
+        // pointed-to object's element tree through the smart pointer's reference.
+        resolvedInfo = { ...info, typeName: unwrapped.innerType, type: unwrapped.innerType };
     }
 
     for (const provider of PROVIDERS) {

@@ -77,7 +77,8 @@ export async function evaluateExpression(
                 context: "watch",
             });
             return r?.result ?? null;
-        } catch {
+        } catch (e) {
+            logger.debug(`[evaluateExpression] exception for "${expression}": ${e instanceof Error ? e.message : String(e)}`);
             return null;
         }
     };
@@ -282,6 +283,35 @@ export async function getContainerSize(
         // libc++ internal layout
         `(int)(${varName}.__end_ - ${varName}.__begin_)`,
     ];
+    // When varName is a deref expression (*ptr), LLDB can fail calling .method()
+    // on parenthesised rvalue expressions. Add arrow-operator equivalents.
+    const derefMatch = varName.match(/^\(\*(.+)\)$/);
+    if (derefMatch) {
+        const ptr = derefMatch[1];
+        exprs.push(
+            `${ptr}->size()`,
+            `(long long)${ptr}->size()`,
+            `(int)(${ptr}->_Mypair._Myval2._Mylast - ${ptr}->_Mypair._Myval2._Myfirst)`,
+            `(int)(${ptr}->_M_impl._M_finish - ${ptr}->_M_impl._M_start)`,
+            `(int)(${ptr}->__end_ - ${ptr}->__begin_)`,
+        );
+    }
+    // Handle weak_ptr lock_deref (*xxx.lock()): LLDB cannot call .lock() which
+    // returns a temporary shared_ptr. Use internal raw pointer fields instead.
+    //   libstdc++: _M_ptr;   libc++: __ptr_
+    const lockDerefMatch = varName.match(/^\(\*(.+)\.lock\(\)\)$/);
+    if (lockDerefMatch) {
+        const wpName = lockDerefMatch[1];
+        for (const ptrField of ["_M_ptr", "__ptr_"]) {
+            exprs.push(
+                `${wpName}.${ptrField}->size()`,
+                `(long long)${wpName}.${ptrField}->size()`,
+                `(int)(${wpName}.${ptrField}->_Mypair._Myval2._Mylast - ${wpName}.${ptrField}->_Mypair._Myval2._Myfirst)`,
+                `(int)(${wpName}.${ptrField}->_M_impl._M_finish - ${wpName}.${ptrField}->_M_impl._M_start)`,
+                `(int)(${wpName}.${ptrField}->__end_ - ${wpName}.${ptrField}->__begin_)`,
+            );
+        }
+    }
     for (const expr of exprs) {
         const res = await evaluateExpression(session, expr, frameId);
         logger.debug(`[getContainerSize] expr=${expr} -> ${JSON.stringify(res)}`);
@@ -327,8 +357,18 @@ async function getSizeFromScopeValue(
         const varsResp = await session.customRequest("variables", {
             variablesReference: localScopeRef,
         });
+        // If varName is a deref expression (*ptr), look up the pointer variable instead.
+        // For (*xxx.lock()), extract just xxx (the weak_ptr name) not xxx.lock().
+        let lookupName = varName;
+        const lockDerefMatch2 = varName.match(/^\(\*(.+)\.lock\(\)\)$/);
+        const derefMatch2 = varName.match(/^\(\*(.+)\)$/);
+        if (lockDerefMatch2) {
+            lookupName = lockDerefMatch2[1];
+        } else if (derefMatch2) {
+            lookupName = derefMatch2[1];
+        }
         const match = (varsResp?.variables ?? []).find(
-            (v: { name: string }) => v.name === varName
+            (v: { name: string }) => v.name === lookupName
         );
         if (!match?.value) { return 0; }
 
@@ -363,21 +403,62 @@ export async function getVectorDataPointer(
                 varsResp?.variables ?? [];
             logger.debug(
                 `[getVectorDataPointer] ${varName} variablesRef=${variablesReference} ` +
-                `children=[${children.map(c => `${c.name}(mr=${c.memoryReference ?? "none"})`).join(", ")}]`
+                `children=[${children.map(c => `${c.name}(mr=${c.memoryReference ?? "none"} vr=${c.variablesReference ?? 0})`).join(", ")}]`
             );
 
-            // CodeLLDB on Windows/MSVC wraps the actual elements inside a
-            // synthetic "[raw]" child — expand it one more level.
-            if (children.length === 1 && children[0].name === "[raw]" &&
-                (children[0].variablesReference ?? 0) > 0) {
-                const rawRef = children[0].variablesReference!;
+            // Strategy A: expand the synthetic "pointer" child emitted by
+            // CodeLLDB's smart-ptr / weak_ptr formatter.  The "pointer" child
+            // represents the pointed-to object (e.g. std::vector<T>), so
+            // expanding it gives [0], [1], … directly.
+            const ptrChild = children.find(
+                (c) => c.name === "pointer" && (c.variablesReference ?? 0) > 0
+            );
+            if (ptrChild) {
+                const ptrResp = await session.customRequest("variables", {
+                    variablesReference: ptrChild.variablesReference!,
+                });
+                const ptrChildren: { name: string; memoryReference?: string; variablesReference?: number }[] =
+                    ptrResp?.variables ?? [];
+                logger.debug(
+                    `[getVectorDataPointer] ${varName} pointer children=[` +
+                    `${ptrChildren.slice(0, 5).map(c => `${c.name}(mr=${c.memoryReference ?? "none"})`).join(", ")}` +
+                    `${ptrChildren.length > 5 ? ` ... (${ptrChildren.length} total)` : ""}]`
+                );
+                // First check if [0] is directly in ptrChildren (CodeLLDB weak_ptr/shared_ptr
+                // formatter exposes vector elements at this level alongside a synthetic [raw]).
+                let firstVec = ptrChildren.find((v) => v.name === "[0]" || v.name === "_Elems") as
+                    { name: string; memoryReference?: string } | undefined;
+                if (!firstVec) {
+                    // Fallback: expand a nested [raw] if present
+                    const innerRaw = ptrChildren.find(
+                        (c) => c.name === "[raw]" && (c.variablesReference ?? 0) > 0
+                    );
+                    if (innerRaw) {
+                        const rawChildren: { name: string; memoryReference?: string }[] =
+                            (await session.customRequest("variables", { variablesReference: innerRaw.variablesReference! }))?.variables ?? [];
+                        firstVec = rawChildren.find((v) => v.name === "[0]" || v.name === "_Elems");
+                    }
+                }
+                if (firstVec?.memoryReference && isValidMemoryReference(firstVec.memoryReference)) {
+                    logger.debug(`[getVectorDataPointer] ${varName} via pointer->${firstVec.name}.mr=${firstVec.memoryReference}`);
+                    return firstVec.memoryReference;
+                }
+            }
+
+            // Strategy B: CodeLLDB wraps elements inside a synthetic "[raw]" child.
+            // This occurs both when [raw] is the sole child (plain vector) and
+            // when it coexists with a "pointer" sibling (smart-ptr / weak_ptr).
+            const rawChild = children.find(
+                (c) => c.name === "[raw]" && (c.variablesReference ?? 0) > 0
+            );
+            if (rawChild) {
                 const rawResp = await session.customRequest("variables", {
-                    variablesReference: rawRef,
+                    variablesReference: rawChild.variablesReference!,
                 });
                 children = rawResp?.variables ?? [];
                 logger.debug(
                     `[getVectorDataPointer] ${varName} [raw] children=[` +
-                    `${children.map(c => `${c.name}(mr=${c.memoryReference ?? "none"})`).join(", ")}]`
+                    `${children.map(c => `${c.name}(mr=${c.memoryReference ?? "none"} vr=${c.variablesReference ?? 0})`).join(", ")}]`
                 );
             }
 
@@ -399,6 +480,18 @@ export async function getVectorDataPointer(
     }
 
     const expressions = buildDataPointerExpressions(varName);
+    // For weak_ptr lock_deref (*xxx.lock()): .lock() fails in LLDB; use the
+    // internal raw pointer (_M_ptr for libstdc++, __ptr_ for libc++) directly.
+    const lockDerefM = varName.match(/^\(\*(.+)\.lock\(\)\)$/);
+    if (lockDerefM) {
+        const wpName = lockDerefM[1];
+        for (const ptrField of ["_M_ptr", "__ptr_"]) {
+            expressions.push(
+                `${wpName}.${ptrField}->data()`,
+                `${wpName}.${ptrField}[0]`,
+            );
+        }
+    }
     const ptrFromEval = await tryGetDataPointer(session, expressions, frameId);
     logger.debug(`[getVectorDataPointer] ${varName} fallback evaluate -> ${ptrFromEval}`);
     if (ptrFromEval) { return ptrFromEval; }
@@ -504,9 +597,13 @@ export async function getVectorSizeFromChildren(
         if (direct > 0) { return direct; }
 
         // ── Strategy 2 / 3: expand [raw] ─────────────────────────────────────
-        if (children.length === 1 && children[0].name === "[raw]" &&
-            (children[0].variablesReference ?? 0) > 0) {
-            const rawRef = children[0].variablesReference!;
+        // [raw] may coexist with other siblings (e.g. "pointer" for weak_ptr),
+        // so we search for it rather than requiring it to be the only child.
+        const rawChild = children.find(
+            (c) => c.name === "[raw]" && (c.variablesReference ?? 0) > 0
+        );
+        if (rawChild) {
+            const rawRef = rawChild.variablesReference!;
             const rawResp = await session.customRequest("variables", {
                 variablesReference: rawRef,
             });

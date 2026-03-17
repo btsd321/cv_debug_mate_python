@@ -30,7 +30,12 @@ export async function fetchLldbPlotData(
     if (unwrapped !== null) {
         resolvedName = unwrapped.kind === "lock_deref" ? `(*${varName}.lock())` : `(*${varName})`;
         typeName = unwrapped.innerType;
-        resolvedInfo = { ...info, typeName: unwrapped.innerType, type: unwrapped.innerType, variablesReference: 0 };
+        // For CodeLLDB, LLDB's synthetic formatters expose smart-pointer children
+        // as the pointed-to object's elements ([0], [1], ...).  Keep the original
+        // variablesReference so tree-based fallbacks (getVectorSizeFromChildren,
+        // getVectorDataPointer) can navigate the element tree when expression
+        // evaluation fails (e.g. weak_ptr where .lock() cannot be called).
+        resolvedInfo = { ...info, typeName: unwrapped.innerType, type: unwrapped.innerType };
     }
 
     for (const provider of PROVIDERS) {
