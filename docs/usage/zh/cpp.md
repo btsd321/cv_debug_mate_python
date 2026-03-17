@@ -231,6 +231,16 @@ cmake --build build_msvc --config Debug
 
 `Ctrl+Shift+P` → **MatrixViewer: View by MatrixViewer** → 输入变量名。
 
+### 方式四：编辑器右键菜单
+
+在断点暂停时，将光标置于**代码编辑器**中的任意变量名上。  
+若该变量可被可视化，右键菜单中会出现 **Visualize by MatrixViewer** 选项。
+
+![在 C++ 变量上使用编辑器右键菜单，显示 Visualize by MatrixViewer](../../../assets/usage_images/editor_context_cpp.png)
+
+> **条件**：变量须已被当前作用域的 **MatrixViewer Debug** 面板检测到。  
+> 可在**设置**中关闭此功能：`matrixViewer.editorContextMenu`（默认: `true`）。
+
 ---
 
 ## 查看器操作

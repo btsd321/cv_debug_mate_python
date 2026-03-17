@@ -79,7 +79,7 @@ npm run compile
 
 ## Visualizing a Variable
 
-There are three ways to open a viewer for a variable:
+There are four ways to open a viewer for a variable:
 
 ### Option 1 — MatrixViewer Debug panel (Recommended)
 
@@ -95,6 +95,16 @@ Right-click a variable in the native **Variables** pane → **View by MatrixView
 ### Option 3 — Command Palette
 
 `Ctrl+Shift+P` → **MatrixViewer: View by MatrixViewer** → type the variable name.
+
+### Option 4 — Editor Context Menu
+
+While paused at a breakpoint, place the cursor on any variable name in the **code editor**.  
+If the variable can be visualized, **Visualize by MatrixViewer** appears in the right-click context menu.
+
+![Editor context menu on a Python variable showing Visualize by MatrixViewer](../../../assets/usage_images/editor_context_python.png)
+
+> **Requirement**: The variable must have been detected by the **MatrixViewer Debug** panel in the current scope.  
+> This option can be disabled in **Settings** → `matrixViewer.editorContextMenu` (default: `true`).
 
 ---
 
