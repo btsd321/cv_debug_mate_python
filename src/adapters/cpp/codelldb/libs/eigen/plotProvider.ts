@@ -54,23 +54,15 @@ export class EigenPlotProvider implements ILibPlotProvider {
         if (info.shape && info.shape.length >= 2 && info.shape[0] > 0 && info.shape[1] > 0) {
             [rows, cols] = info.shape;
         } else {
-            rows = await evalEigenDim(session, varName, "rows", frameId);
-            cols = await evalEigenDim(session, varName, "cols", frameId);
-        }
-        logger.debug(`[EigenPlot] ${varName}: rows=${rows} cols=${cols} from eval`);
-
-        // Fallback 1: parse compile-time dims from type template string.
-        // Required for e.g. VectorXd (ColsAtCompileTime=1) where m_storage.m_cols
-        // does not exist, and also when variablesReference was cleared to 0 after
-        // smart-pointer unwrapping in the coordinator.
-        if (rows <= 0 || cols <= 0) {
+            // Parse compile-time dimensions first (no LLDB calls needed).
+            // Only call evalEigenDim for dimensions that are dynamic at compile time
+            // (avoids "Attribute not defined" for fixed-cols types like VectorXd where
+            // m_storage.m_cols does not exist at runtime).
             const ctDims = parseEigenCompileTimeDims(typeStr);
-            if (ctDims) {
-                if (rows <= 0 && ctDims[0] > 0) { rows = ctDims[0]; }
-                if (cols <= 0 && ctDims[1] > 0) { cols = ctDims[1]; }
-            }
-            logger.debug(`[EigenPlot] ${varName}: after compile-time fallback rows=${rows} cols=${cols}`);
+            rows = (ctDims && ctDims[0] > 0) ? ctDims[0] : await evalEigenDim(session, varName, "rows", frameId);
+            cols = (ctDims && ctDims[1] > 0) ? ctDims[1] : await evalEigenDim(session, varName, "cols", frameId);
         }
+        logger.debug(`[EigenPlot] ${varName}: rows=${rows} cols=${cols}`);
 
         // Fallback 2: variables tree (LLDB on Windows/MSVC — all evaluations return null)
         if ((rows <= 0 || cols <= 0) && (info.variablesReference ?? 0) > 0) {

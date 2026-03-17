@@ -24,7 +24,7 @@ import { ImageData } from "../../../../../viewers/viewerTypes";
 import { ILibImageProvider } from "../../../../ILibProviders";
 import { readMemoryChunked } from "../../debugger";
 import { bufferToBase64, computeMinMax } from "../utils";
-import { eigenDtype, bytesPerEigenDtype, evalEigenDim, getEigenDataPointer } from "./eigenUtils";
+import { eigenDtype, bytesPerEigenDtype, evalEigenDim, getEigenDataPointer, parseEigenCompileTimeDims } from "./eigenUtils";
 
 export class EigenImageProvider implements ILibImageProvider {
 
@@ -49,8 +49,11 @@ export class EigenImageProvider implements ILibImageProvider {
         if (info.shape && info.shape.length >= 2 && info.shape[0] > 0 && info.shape[1] > 0) {
             [rows, cols] = info.shape;
         } else {
-            rows = await evalEigenDim(session, varName, "rows", frameId);
-            cols = await evalEigenDim(session, varName, "cols", frameId);
+            // imageProvider receives 2D matrices; parse ctDims so fixed-size types
+            // (e.g. Matrix<double,3,3>) skip the eval entirely, matching plotProvider.
+            const ctDims = parseEigenCompileTimeDims(typeStr);
+            rows = (ctDims && ctDims[0] > 0) ? ctDims[0] : await evalEigenDim(session, varName, "rows", frameId);
+            cols = (ctDims && ctDims[1] > 0) ? ctDims[1] : await evalEigenDim(session, varName, "cols", frameId);
         }
 
         if (rows <= 0 || cols <= 0) {

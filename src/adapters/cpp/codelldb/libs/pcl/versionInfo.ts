@@ -1,12 +1,13 @@
 /**
  * pcl/versionInfo.ts — Fetch PCL version via CodeLLDB (session.type = "lldb").
  *
- * PCL_MAJOR_VERSION / PCL_MINOR_VERSION / PCL_REVISION_VERSION are
- * C preprocessor macros. They are NOT stored in debug symbols and cannot
- * be read via LLDB expression evaluation in general.
- *
- * On Linux/macOS with DWARF debug info, LLDB may resolve them as compile-time
- * constants. On Windows with PDB debug info, these macros are always absent.
+ * Strategy (tried in order):
+ *   1. moduleVersion — version parsed from the PCL install path by the coordinator
+ *      (e.g. C:\PCL 1.13.0\bin\pcl_common_debug.dll → "1.13.0"); works on
+ *      Windows without any expression evaluation.
+ *   2. PCL_MAJOR_VERSION / PCL_MINOR_VERSION / PCL_REVISION_VERSION macros —
+ *      C preprocessor macros; available in DWARF debug info on Linux/macOS,
+ *      but absent in PDB on Windows.
  */
 
 import * as vscode from "vscode";
@@ -16,16 +17,18 @@ import { parseVersionNum } from "../../../shared/versionUtils";
 /**
  * Return the PCL version string (e.g. "1.13.0") or null if PCL symbols
  * are not available in the current debug session.
+ *
+ * @param moduleVersion  Pre-resolved version from loaded DLL metadata (may be null).
  */
 export async function fetchPclVersion(
     session: vscode.DebugSession,
-    frameId: number | undefined
+    frameId: number | undefined,
+    moduleVersion: string | null = null
 ): Promise<string | null> {
-    // Short-circuit: probe major first. If it fails, all macros will fail for
-    // the same underlying reason (macros not in debug symbols); skip minor/patch.
+    // Short-circuit: probe major first. If it fails, fall back to moduleVersion.
     const majorRaw = await evaluateExpression(session, "(int)PCL_MAJOR_VERSION", frameId);
     const major = parseVersionNum(majorRaw);
-    if (major === null) { return null; }
+    if (major === null) { return moduleVersion; }
     const [minorRaw, patchRaw] = await Promise.all([
         evaluateExpression(session, "(int)PCL_MINOR_VERSION", frameId),
         evaluateExpression(session, "(int)PCL_REVISION_VERSION", frameId),
@@ -34,3 +37,4 @@ export async function fetchPclVersion(
     const patch = parseVersionNum(patchRaw) ?? "?";
     return `${major}.${minor}.${patch}`;
 }
+

@@ -89,8 +89,15 @@ export class CppAdapter implements IDebugAdapter {
             const eigenVarName = ptrUnwrapped !== null
                 ? (ptrUnwrapped.kind === "lock_deref" ? `(*${varName}.lock())` : `(*${varName})`)
                 : varName;
-            const rows = await this._evalEigenDim(session, eigenVarName, "rows", info.frameId);
-            const cols = await this._evalEigenDim(session, eigenVarName, "cols", info.frameId);
+            // Skip _evalEigenDim for dimensions known at compile time (e.g. VectorXd
+            // has ColsAtCompileTime=1; m_storage.m_cols does not exist at runtime).
+            const ctDims = this._parseEigenCompileTimeDims(info.typeName ?? info.type);
+            const rows = (ctDims && ctDims[0] > 0)
+                ? ctDims[0]
+                : await this._evalEigenDim(session, eigenVarName, "rows", info.frameId);
+            const cols = (ctDims && ctDims[1] > 0)
+                ? ctDims[1]
+                : await this._evalEigenDim(session, eigenVarName, "cols", info.frameId);
             if (rows > 0 && cols > 0) {
                 info.shape = [rows, cols];
             }
@@ -111,10 +118,12 @@ export class CppAdapter implements IDebugAdapter {
         const internalProp = prop === "rows" ? "m_rows" : "m_cols";
         const exprs = session.type === "lldb"
             ? [
+                // On Windows/PDB, LLDB cannot JIT-compile function calls (.rows()),
+                // but can access struct fields via memory read (m_storage.m_rows).
+                // Try field access first; fall back to function call for Linux/macOS.
+                `${varName}.m_storage.${internalProp}`,
                 `${varName}.${prop}()`,
                 `(long long)${varName}.${prop}()`,
-                `${varName}.m_storage.${internalProp}`,
-                `(long long)${varName}.m_storage.${internalProp}`,
             ]
             : [
                 `(int)${varName}.${prop}()`,
@@ -129,6 +138,15 @@ export class CppAdapter implements IDebugAdapter {
             }
         }
         return 0;
+    }
+
+    /** Parse Eigen compile-time [rows, cols] from a type string; -1 = dynamic. */
+    private _parseEigenCompileTimeDims(typeStr: string): [number, number] | null {
+        const m = typeStr.match(/Eigen::(?:Matrix|Array)\s*<[^,]+,\s*(-?\d+),\s*(-?\d+)/);
+        if (m) { return [parseInt(m[1]), parseInt(m[2])]; }
+        if (/Eigen::RowVector/.test(typeStr)) { return [1, -1]; }
+        if (/Eigen::Vector/.test(typeStr))    { return [-1, 1]; }
+        return null;
     }
 
     /** Route evaluateExpression to the correct per-debugger implementation. */
