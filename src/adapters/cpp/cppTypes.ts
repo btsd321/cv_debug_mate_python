@@ -60,6 +60,11 @@ const PLOT_TYPE_PATTERNS = [
     //   QVector<float>, QList<int>, QPolygonF, QVector<QVector2D>, QList<QVector2D>
     /\bQ(?:Vector|List)\s*<[^>]+>/,
     /\bQPolygonF\b/,
+    // Bare Qt containers — GDB sometimes omits the template argument entirely,
+    // reporting "QVector" instead of "QVector<float>" or "QVector<QVector2D>".
+    // Classify tentatively as "plot"; Layer-2 enrichment in cppAdapter will
+    // reconstruct the full type from the variable's first indexed child.
+    /\bQ(?:Vector|List)\b/,
 ];
 
 // ── Layer-1 detection ─────────────────────────────────────────────────────

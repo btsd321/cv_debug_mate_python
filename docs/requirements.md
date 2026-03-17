@@ -88,6 +88,14 @@
 - 支持**手动添加变量**到面板（右键菜单 → "Add to MatrixViewer"）
 - 支持**变量分组**（Add to Group）
 
+### 3.1.1 编辑器右键可视化（Editor Context Menu）
+
+- 调试暂停时，在代码编辑器中将光标置于某变量名上，右键菜单出现 **"Visualize by MatrixViewer"** 选项
+- 仅当光标所在单词存在于当前调试作用域的可视化变量集合中时，右键项才会显示
+- 通过上下文键 `matrixViewer.canVisualizeSelection` 动态控制菜单可见性
+- 通过配置项 `matrixViewer.editorContextMenu`（默认 `true`）可关闭此功能
+- 源码：`src/extension.ts`（命令 `matrixViewer.visualizeSelection`、选区监听、上下文键更新）
+
 ### 3.2 2D 图像查看器（Image Viewer）
 
 - 显示图像内容，支持多通道（灰度/RGB/BGR/RGBA）

@@ -22,6 +22,9 @@ export function activate(context: vscode.ExtensionContext) {
     const syncManager = new SyncManager();
     const variablesProvider = new MvVariablesProvider(context, panelManager);
 
+    /** Names of variables known to be visualizable in the current debug session. */
+    let visualizableVarNames = new Set<string>();
+
     // Register the TreeView in the Debug sidebar
     const treeView = vscode.window.createTreeView("matrixViewerPanel", {
         treeDataProvider: variablesProvider,
@@ -106,6 +109,30 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand(
+            "matrixViewer.visualizeSelection",
+            async () => {
+                const editor = vscode.window.activeTextEditor;
+                if (!editor) {
+                    return;
+                }
+                const position = editor.selection.active;
+                const wordRange = editor.document.getWordRangeAtPosition(position);
+                const varName = (wordRange
+                    ? editor.document.getText(wordRange)
+                    : editor.document.getText(editor.selection)
+                ).trim();
+                logger.debug(`visualizeSelection: varName="${varName}"`);
+                if (!varName) {
+                    vscode.window.showWarningMessage("MatrixViewer: No variable under cursor.");
+                    return;
+                }
+                await visualizeVariable(varName, context, panelManager, syncManager);
+            }
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
             "matrixViewer.syncPair",
             async (item: MvVariableItem) => {
                 const existing = syncManager.getPendingPair();
@@ -141,6 +168,28 @@ export function activate(context: vscode.ExtensionContext) {
         )
     );
 
+    // ── Editor selection → context key for right-click menu ─────────────────
+
+    context.subscriptions.push(
+        vscode.window.onDidChangeTextEditorSelection((e) => {
+            const config = vscode.workspace.getConfiguration("matrixViewer");
+            if (!config.get<boolean>("editorContextMenu", true) || !vscode.debug.activeDebugSession) {
+                vscode.commands.executeCommand("setContext", "matrixViewer.canVisualizeSelection", false);
+                return;
+            }
+            const position = e.selections[0]?.active;
+            if (!position) {
+                vscode.commands.executeCommand("setContext", "matrixViewer.canVisualizeSelection", false);
+                return;
+            }
+            const wordRange = e.textEditor.document.getWordRangeAtPosition(position);
+            const word = wordRange ? e.textEditor.document.getText(wordRange) : "";
+            const canViz = word.length > 0 && visualizableVarNames.has(word);
+            logger.debug(`[editorContext] word="${word}" canViz=${canViz}`);
+            vscode.commands.executeCommand("setContext", "matrixViewer.canVisualizeSelection", canViz);
+        })
+    );
+
     // ── Debug Session Events ─────────────────────────────────────────────────
 
     // onDidChangeActiveStackItem fires reliably when the debugger stops at a
@@ -156,6 +205,8 @@ export function activate(context: vscode.ExtensionContext) {
             const config = vscode.workspace.getConfiguration("matrixViewer");
             if (config.get<boolean>("autoDetect", true)) {
                 await variablesProvider.autoDetectVariables(session);
+                visualizableVarNames = variablesProvider.getVisualizableVarNames();
+                logger.debug(`[editorContext] refreshed visualizableVarNames: [${[...visualizableVarNames].join(", ")}]`);
             }
             if (config.get<boolean>("autoRefresh", true)) {
                 await panelManager.refreshAll(session);
@@ -171,6 +222,8 @@ export function activate(context: vscode.ExtensionContext) {
                 const config = vscode.workspace.getConfiguration("matrixViewer");
                 if (config.get<boolean>("autoDetect", true)) {
                     await variablesProvider.autoDetectVariables(e.session);
+                    visualizableVarNames = variablesProvider.getVisualizableVarNames();
+                    logger.debug(`[editorContext] refreshed visualizableVarNames (fallback): [${[...visualizableVarNames].join(", ")}]`);
                 }
                 if (config.get<boolean>("autoRefresh", true)) {
                     await panelManager.refreshAll(e.session);
@@ -184,6 +237,8 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.debug.onDidTerminateDebugSession(() => {
             panelManager.dispose();
             variablesProvider.clear();
+            visualizableVarNames.clear();
+            vscode.commands.executeCommand("setContext", "matrixViewer.canVisualizeSelection", false);
         })
     );
 

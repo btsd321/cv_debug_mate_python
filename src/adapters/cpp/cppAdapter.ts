@@ -11,6 +11,7 @@ import * as vscode from "vscode";
 import { IDebugAdapter, VariableInfo, VisualizableKind } from "../IDebugAdapter";
 import { ImageData, PlotData, PointCloudData } from "../../viewers/viewerTypes";
 import { basicTypeDetect } from "./cppTypes";
+import { logger } from "../../log/logger";
 
 // ── Per-debugger variable scope / evaluate ────────────────────────────────
 import {
@@ -31,12 +32,15 @@ import {
 import { fetchGdbImageData } from "./gdb/imageProvider";
 import { fetchGdbPlotData } from "./gdb/plotProvider";
 import { fetchGdbPointCloudData } from "./gdb/pointCloudProvider";
+import { enrichGdbVariableInfo } from "./gdb/variableInfoEnrichers";
 import { fetchLldbImageData } from "./codelldb/imageProvider";
 import { fetchLldbPlotData } from "./codelldb/plotProvider";
 import { fetchLldbPointCloudData } from "./codelldb/pointCloudProvider";
+import { enrichLldbVariableInfo } from "./codelldb/variableInfoEnrichers";
 import { fetchMsvcImageData } from "./cppvsdbg/imageProvider";
 import { fetchMsvcPlotData } from "./cppvsdbg/plotProvider";
 import { fetchMsvcPointCloudData } from "./cppvsdbg/pointCloudProvider";
+import { enrichMsvcVariableInfo } from "./cppvsdbg/variableInfoEnrichers";
 
 export class CppAdapter implements IDebugAdapter {
     isSupportedSession(session: vscode.DebugSession): boolean {
@@ -68,9 +72,16 @@ export class CppAdapter implements IDebugAdapter {
             return null;
         }
 
+        // Run per-debugger variable-info enrichers (e.g. reconstruct bare Qt
+        // container types that GDB reports without template arguments).
+        if (session.type === "lldb") { await enrichLldbVariableInfo(session, info); }
+        else if (session.type === "cppvsdbg") { await enrichMsvcVariableInfo(session, info); }
+        else { await enrichGdbVariableInfo(session, info); }
+        logger.debug(`getVariableInfo post-enrich: "${varName}" typeName="${info.typeName ?? info.type}"`);
+
         // For Eigen types, query runtime .rows() / .cols() so Layer-2
         // detectVisualizableType can distinguish line / scatter / image.
-        if (/Eigen::(Matrix|Array|Vector|RowVector)/i.test(info.type)) {
+        if (/Eigen::(Matrix|Array|Vector|RowVector)/i.test(info.typeName ?? info.type)) {
             const rows = await this._evalEigenDim(session, varName, "rows", info.frameId);
             const cols = await this._evalEigenDim(session, varName, "cols", info.frameId);
             if (rows > 0 && cols > 0) {

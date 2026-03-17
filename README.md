@@ -87,6 +87,7 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 | **🔗 View Sync** | Pair variables for synchronized zoom/pan/rotation across viewers |
 | **🔍 Auto Detection** | Variables panel auto-detects all visualizable types in current scope |
 | **🔄 Auto Refresh** | Webview auto-updates when stepping through code |
+| **🖱️ Editor Context Menu** | Right-click a variable name in the code editor to visualize it directly (shown only when the variable is visualizable in the current debug scope) |
 
 ---
 
