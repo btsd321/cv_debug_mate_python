@@ -156,11 +156,44 @@ async function expandPclPointsChild(
     }
     try {
         const resp = await session.customRequest("variables", { variablesReference });
-        const v = (resp?.variables ?? []).find(
-            (c: { name: string }) => c.name === "points"
-        );
+        const children: VarChild[] = resp?.variables ?? [];
+        let v = children.find((c) => c.name === "points");
         if (v) {
             return { value: v.value ?? "", variablesReference: v.variablesReference ?? 0 };
+        }
+        // CodeLLDB smart pointer formatter (shared_ptr / unique_ptr / weak_ptr):
+        //   top-level children are "pointer" + "[raw]".
+        //   Expanding "pointer" gives either:
+        //   (a) the inner object's struct fields directly (e.g. PointCloud members)
+        //   (b) formatted container elements [0],[1],...
+        //   Strategy: check for "points" directly in pointer's children (case a),
+        //   then look for [0] and re-expand (case b, rarely applies here).
+        const ptrChild = children.find(
+            (c) => c.name === "pointer" && (c.variablesReference ?? 0) > 0
+        );
+        if (ptrChild) {
+            const ptrResp = await session.customRequest("variables", {
+                variablesReference: ptrChild.variablesReference!,
+            });
+            const ptrChildren: VarChild[] = ptrResp?.variables ?? [];
+            // Case (a): ptrChildren are the PointCloud's struct fields
+            v = ptrChildren.find((c) => c.name === "points");
+            if (v) {
+                return { value: v.value ?? "", variablesReference: v.variablesReference ?? 0 };
+            }
+            // Case (b): ptrChildren are container elements; [0] IS the PointCloud
+            const elem0 = ptrChildren.find(
+                (c) => c.name === "[0]" && (c.variablesReference ?? 0) > 0
+            );
+            if (elem0) {
+                const cloudResp = await session.customRequest("variables", {
+                    variablesReference: elem0.variablesReference!,
+                });
+                v = (cloudResp?.variables ?? []).find((c: VarChild) => c.name === "points");
+                if (v) {
+                    return { value: v.value ?? "", variablesReference: v.variablesReference ?? 0 };
+                }
+            }
         }
     } catch {
         /* fall through */

@@ -186,11 +186,16 @@ async function getFirstElementRef(
             `children=[${outerVars.map(v => `${v.name}(mr=${v.memoryReference ?? "none"})`).join(", ")}]`
         );
 
-        // MSVC STL std::array: "_Elems" field holds the raw contiguous storage.
-        // Its memoryReference already points to the first element.
-        const elemsChild = outerVars.find((v) => v.name === "_Elems");
+        // std::array internal storage field — name varies by STL implementation:
+        //   _Elems   (MSVC STL)
+        //   _M_elems (libstdc++)
+        //   __elems_ (libc++)
+        // Its memoryReference directly points to the first contiguous element.
+        const elemsChild = outerVars.find(
+            (v) => v.name === "_Elems" || v.name === "_M_elems" || v.name === "__elems_"
+        );
         if (elemsChild?.memoryReference) {
-            logger.debug(`[getFirstElementRef] using _Elems.memoryReference=${elemsChild.memoryReference}`);
+            logger.debug(`[getFirstElementRef] using ${elemsChild.name}.memoryReference=${elemsChild.memoryReference}`);
             return elemsChild.memoryReference;
         }
 
@@ -203,7 +208,9 @@ async function getFirstElementRef(
                 variablesReference: firstRow.variablesReference,
             });
             const innerVars: { name: string; memoryReference?: string }[] = inner?.variables ?? [];
-            const firstCell = innerVars.find((v) => v.name === "[0]" || v.name === "_Elems");
+            const firstCell = innerVars.find(
+                (v) => v.name === "[0]" || v.name === "_Elems" || v.name === "_M_elems" || v.name === "__elems_"
+            );
             if (firstCell?.memoryReference) {
                 logger.debug(`[getFirstElementRef] using row[0].${firstCell.name}=${firstCell.memoryReference}`);
                 return firstCell.memoryReference;

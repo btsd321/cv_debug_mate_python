@@ -121,12 +121,22 @@ export async function getMatInfoFromVariables(
         }[] = varsResp?.variables ?? [];
 
         // Smart pointer wrapping (CodeLLDB synthetic formatter):
-        //   weak_ptr<cv::Mat> / shared_ptr<cv::Mat> exposes a "pointer" child whose
-        //   first element "[0]" IS the cv::Mat. Recurse into it before anything else.
+        //   weak_ptr<T> / shared_ptr<T> / unique_ptr<T> exposes a "pointer" child.
+        //   Expanding "pointer" gives either:
+        //   (a) the pointed-to struct's fields directly (e.g. cv::Mat → flags/rows/cols/data)
+        //   (b) a container's formatted elements ([0],[1],...) for e.g. shared_ptr<vector<Mat>>
+        //   Strategy: recurse into ptrChild.variablesReference directly first (covers case a),
+        //   then look for [0] as a fallback (covers case b).
         const ptrChild = vars.find(
             (v) => v.name === "pointer" && (v.variablesReference ?? 0) > 0
         );
         if (ptrChild) {
+            // Case (a): ptrChildren are the inner object's struct fields
+            const innerFromPtr = await getMatInfoFromVariables(session, ptrChild.variablesReference!);
+            if (innerFromPtr && innerFromPtr.rows > 0 && innerFromPtr.cols > 0 && innerFromPtr.dataPtr) {
+                return innerFromPtr;
+            }
+            // Case (b): ptrChildren are formatted container elements; [0] IS the object
             const ptrResp = await session.customRequest("variables", {
                 variablesReference: ptrChild.variablesReference!,
             });

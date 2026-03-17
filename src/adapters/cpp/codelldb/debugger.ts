@@ -426,8 +426,9 @@ export async function getVectorDataPointer(
                 );
                 // First check if [0] is directly in ptrChildren (CodeLLDB weak_ptr/shared_ptr
                 // formatter exposes vector elements at this level alongside a synthetic [raw]).
-                let firstVec = ptrChildren.find((v) => v.name === "[0]" || v.name === "_Elems") as
-                    { name: string; memoryReference?: string } | undefined;
+                let firstVec = ptrChildren.find(
+                    (v) => v.name === "[0]" || v.name === "_Elems" || v.name === "_M_elems" || v.name === "__elems_"
+                ) as { name: string; memoryReference?: string } | undefined;
                 if (!firstVec) {
                     // Fallback: expand a nested [raw] if present
                     const innerRaw = ptrChildren.find(
@@ -436,7 +437,9 @@ export async function getVectorDataPointer(
                     if (innerRaw) {
                         const rawChildren: { name: string; memoryReference?: string }[] =
                             (await session.customRequest("variables", { variablesReference: innerRaw.variablesReference! }))?.variables ?? [];
-                        firstVec = rawChildren.find((v) => v.name === "[0]" || v.name === "_Elems");
+                        firstVec = rawChildren.find(
+                            (v) => v.name === "[0]" || v.name === "_Elems" || v.name === "_M_elems" || v.name === "__elems_"
+                        );
                     }
                 }
                 if (firstVec?.memoryReference && isValidMemoryReference(firstVec.memoryReference)) {
@@ -463,9 +466,11 @@ export async function getVectorDataPointer(
             }
 
             // "[0]" — vector/C-array first element (most debuggers)
-            // "_Elems" — MSVC STL std::array<T,N> internal storage field
+            // "_Elems"   — MSVC STL std::array<T,N> internal storage field
+            // "_M_elems" — libstdc++ std::array<T,N> internal storage field
+            // "__elems_" — libc++ std::array<T,N> internal storage field
             const firstElem = children.find(
-                (v) => v.name === "[0]" || v.name === "_Elems"
+                (v) => v.name === "[0]" || v.name === "_Elems" || v.name === "_M_elems" || v.name === "__elems_"
             );
             if (
                 firstElem?.memoryReference &&

@@ -167,6 +167,47 @@ export async function getEigenInfoFromTree(
             top.map(v => `${v.name}=${v.value ?? "?"}`).join(", ")
         );
 
+        // CodeLLDB smart pointer formatter (shared_ptr / unique_ptr / weak_ptr):
+        //   synthetic children are "pointer" + "[raw]".
+        //   Expanding "pointer" gives either:
+        //   (a) the inner object's struct fields (e.g. Eigen base class children)
+        //   (b) formatted container elements [0],[1],...
+        //   Strategy: use pointer's children as the new "top" (case a),
+        //   examining [0] as fallback only for container-wrapped objects (case b).
+        if (
+            !top.find((v) => v.name === "m_storage") &&
+            !top.find((v) => /^Eigen::/.test(v.name))
+        ) {
+            const ptrChild = top.find(
+                (v) => v.name === "pointer" && (v.variablesReference ?? 0) > 0
+            );
+            if (ptrChild) {
+                const ptrChildren = await expand(ptrChild.variablesReference!);
+                // Case (a): ptrChildren are the Eigen object's fields / base class
+                const hasMStorage = ptrChildren.find((v) => v.name === "m_storage");
+                const hasEigenBase = ptrChildren.find((v) => /^Eigen::/.test(v.name));
+                if (hasMStorage || hasEigenBase) {
+                    top = ptrChildren;
+                    logger.debug(
+                        `[getEigenInfoFromTree] smart-ptr unwrap via pointer (direct fields); new top: ` +
+                        top.map(v => v.name).join(", ")
+                    );
+                } else {
+                    // Case (b): look for [0] (container-wrapped Eigen object)
+                    const elem0 = ptrChildren.find(
+                        (v) => v.name === "[0]" && (v.variablesReference ?? 0) > 0
+                    );
+                    if (elem0) {
+                        top = await expand(elem0.variablesReference!);
+                        logger.debug(
+                            `[getEigenInfoFromTree] smart-ptr unwrap via pointer->[0]; new top: ` +
+                            top.map(v => v.name).join(", ")
+                        );
+                    }
+                }
+            }
+        }
+
         // CodeLLDB may expose the Eigen base class as a single synthetic child:
         // "Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1>>"
         // m_storage lives inside it — expand one more level.
