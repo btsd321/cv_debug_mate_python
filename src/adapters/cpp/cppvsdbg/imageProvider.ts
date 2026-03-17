@@ -30,7 +30,9 @@ export async function fetchMsvcImageData(
 
     const unwrapped = unwrapSmartPointer(typeName);
     if (unwrapped !== null) {
-        resolvedName = unwrapped.kind === "lock_deref" ? `(*${varName}.lock())` : `(*${varName})`;
+        // MSVC STL: weak_ptr<T> → _Ptr_base<T>::_Ptr is the raw managed pointer.
+        // Avoids chaining methods on the temporary shared_ptr returned by lock().
+        resolvedName = unwrapped.kind === "lock_deref" ? `(*${varName}._Ptr)` : `(*${varName})`;
         typeName = unwrapped.innerType;
         resolvedInfo = { ...info, typeName: unwrapped.innerType, type: unwrapped.innerType, variablesReference: 0 };
     }

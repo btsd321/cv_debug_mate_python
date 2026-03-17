@@ -97,17 +97,6 @@ int main()
     }
 
     // =========================================================================
-    // std::vector<float> with 2 columns (Nx2, as pairs)  →  2D Scatter
-    // (stored as interleaved x,y — viewer reads col-0=X col-1=Y)
-    // =========================================================================
-    std::vector<float> scatter_circle(300 * 2);
-    for (int i = 0; i < 300; ++i) {
-        double a = i * 2.0 * 3.14159265 / 300;
-        scatter_circle[i * 2 + 0] = static_cast<float>(std::cos(a));
-        scatter_circle[i * 2 + 1] = static_cast<float>(std::sin(a));
-    }
-
-    // =========================================================================
     // std::vector<cv::Point3f>  →  Point Cloud Viewer
     // =========================================================================
 #ifdef HAVE_OPENCV

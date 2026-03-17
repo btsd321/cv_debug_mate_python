@@ -28,7 +28,11 @@ export async function fetchMsvcPlotData(
 
     const unwrapped = unwrapSmartPointer(typeName);
     if (unwrapped !== null) {
-        resolvedName = unwrapped.kind === "lock_deref" ? `(*${varName}.lock())` : `(*${varName})`;
+        // MSVC STL: weak_ptr<T> inherits _Ptr_base<T> which stores the managed
+        // raw pointer in member _Ptr.  Using _Ptr avoids calling lock() whose
+        // return value is a temporary shared_ptr — cppvsdbg cannot chain method
+        // calls (e.g. .size(), .data()) on temporaries returned by functions.
+        resolvedName = unwrapped.kind === "lock_deref" ? `(*${varName}._Ptr)` : `(*${varName})`;
         typeName = unwrapped.innerType;
         resolvedInfo = { ...info, typeName: unwrapped.innerType, type: unwrapped.innerType, variablesReference: 0 };
     }
