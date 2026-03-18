@@ -11,6 +11,7 @@ import { PointCloudData } from "../../../../../viewers/viewerTypes";
 import { ILibPointCloudProvider } from "../../../../ILibProviders";
 import { evaluateExpression } from "../../debugger";
 import { computeBounds } from "../utils";
+import { logger } from "../../../../../log/logger";
 
 export class BuiltinsPointCloudProvider implements ILibPointCloudProvider {
     canHandle(typeName: string): boolean {
@@ -34,7 +35,8 @@ export class BuiltinsPointCloudProvider implements ILibPointCloudProvider {
         let points: number[][];
         try {
             points = JSON.parse(result.replace(/^'|'$/g, "")) as number[][];
-        } catch {
+        } catch (e) {
+            logger.debug(`[Builtins/PointCloud] JSON parse failed for "${varName}": ${e}`);
             return null;
         }
 

@@ -13,6 +13,7 @@ import { PlotData } from "../../../../../viewers/viewerTypes";
 import { ILibPlotProvider } from "../../../../ILibProviders";
 import { fetchListData, evaluateExpression } from "../../debugger";
 import { computeStats } from "../utils";
+import { logger } from "../../../../../log/logger";
 
 export class BuiltinsPlotProvider implements ILibPlotProvider {
     canHandle(typeName: string): boolean {
@@ -40,7 +41,8 @@ export class BuiltinsPlotProvider implements ILibPlotProvider {
             try {
                 const jsonStr = result.startsWith("'") ? result.slice(1, -1) : result;
                 points = JSON.parse(jsonStr) as [number, number][];
-            } catch {
+            } catch (e) {
+                logger.debug(`[Builtins/Plot] JSON parse failed for 2D scatter "${varName}": ${e}`);
                 return null;
             }
             if (points.length === 0) { return null; }

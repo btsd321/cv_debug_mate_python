@@ -14,6 +14,7 @@
 
 import * as vscode from "vscode";
 import { VariableInfo } from "../../IDebugAdapter";
+import { logger } from "../../../log/logger";
 
 export { VariableInfo } from "../../IDebugAdapter";
 
@@ -47,7 +48,8 @@ export async function getCurrentFrameId(
             levels: 1,
         });
         return stackResp?.stackFrames?.[0]?.id;
-    } catch {
+    } catch (e) {
+        logger.debug(`[C++] getCurrentFrameId failed: ${e}`);
         return undefined;
     }
 }
@@ -91,7 +93,8 @@ export async function getVariableInfo(
             variablesReference: match.variablesReference,
             frameId: resolvedFrame,
         };
-    } catch {
+    } catch (e) {
+        logger.warn(`[C++] getVariableInfo failed for "${varName}": ${e}`);
         return null;
     }
 }

@@ -1,8 +1,8 @@
 {
   "name": "matrix-viewer",
   "displayName": "MatrixViewer Debug",
-  "description": "A Visual Studio Code extension for visualizing 1D/2D/3D data structures during debugging. Supports **Python** (debugpy) and **C++** (cppdbg / lldb).",
-  "version": "0.3.0",
+  "description": "A Visual Studio Code extension for visualizing 1D/2D/3D data structures during debugging. Supports **Python** and **C++**.",
+  "version": "0.4.0",
   "publisher": "btsd321",
   "license": "MIT",
   "engines": {
@@ -14,13 +14,11 @@
   },
   "categories": [
     "Debuggers",
-    "Visualization",
-    "Machine Learning"
+    "Visualization"
   ],
   "keywords": [
     "numpy",
     "opencv",
-    "torch",
     "pillow",
     "open3d",
     "image",
@@ -40,7 +38,8 @@
     "eigen",
     "pcl",
     "matrix",
-    "array"
+    "array",
+    "qt"
   ],
   "icon": "assets/icon_256x256.png",
   "activationEvents": [
@@ -82,6 +81,11 @@
         "title": "Refresh Panel",
         "icon": "$(refresh)",
         "category": "MatrixViewer"
+      },
+      {
+        "command": "matrixViewer.visualizeSelection",
+        "title": "Visualize by MatrixViewer",
+        "category": "MatrixViewer"
       }
     ],
     "views": {
@@ -89,6 +93,7 @@
         {
           "id": "matrixViewerPanel",
           "name": "MatrixViewer Debug",
+          "icon": "$(eye)",
           "when": "debugState == 'stopped' || matrixViewer.active"
         }
       ]
@@ -134,6 +139,13 @@
           "when": "debugState == 'stopped'",
           "group": "navigation"
         }
+      ],
+      "editor/context": [
+        {
+          "command": "matrixViewer.visualizeSelection",
+          "when": "matrixViewer.canVisualizeSelection && config.matrixViewer.editorContextMenu",
+          "group": "debug@100"
+        }
       ]
     },
     "configuration": {
@@ -165,6 +177,11 @@
             "plasma"
           ],
           "description": "Default colormap for single-channel float images"
+        },
+        "matrixViewer.editorContextMenu": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show 'Visualize by MatrixViewer' in the editor right-click context menu when the cursor is on a visualizable variable during a debug session"
         }
       }
     }

@@ -253,6 +253,16 @@ export class MvVariablesProvider
         }
     }
 
+    // ── Public accessors ────────────────────────────────────────────────────
+
+    /**
+     * Returns the set of variable names currently known to be visualizable.
+     * Used by extension.ts to drive the editor right-click context key.
+     */
+    getVisualizableVarNames(): Set<string> {
+        return new Set(this.pinnedVars.keys());
+    }
+
     // ── Private helpers ────────────────────────────────────────────────────
 
     /** Return the adapter for the currently active debug session, or null. */

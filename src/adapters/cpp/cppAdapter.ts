@@ -11,6 +11,7 @@ import * as vscode from "vscode";
 import { IDebugAdapter, VariableInfo, VisualizableKind } from "../IDebugAdapter";
 import { ImageData, PlotData, PointCloudData } from "../../viewers/viewerTypes";
 import { basicTypeDetect } from "./cppTypes";
+import { logger } from "../../log/logger";
 
 // ── Per-debugger variable scope / evaluate ────────────────────────────────
 import {
@@ -31,12 +32,16 @@ import {
 import { fetchGdbImageData } from "./gdb/imageProvider";
 import { fetchGdbPlotData } from "./gdb/plotProvider";
 import { fetchGdbPointCloudData } from "./gdb/pointCloudProvider";
+import { enrichGdbVariableInfo } from "./gdb/variableInfoEnrichers";
 import { fetchLldbImageData } from "./codelldb/imageProvider";
 import { fetchLldbPlotData } from "./codelldb/plotProvider";
 import { fetchLldbPointCloudData } from "./codelldb/pointCloudProvider";
+import { enrichLldbVariableInfo } from "./codelldb/variableInfoEnrichers";
 import { fetchMsvcImageData } from "./cppvsdbg/imageProvider";
 import { fetchMsvcPlotData } from "./cppvsdbg/plotProvider";
 import { fetchMsvcPointCloudData } from "./cppvsdbg/pointCloudProvider";
+import { enrichMsvcVariableInfo } from "./cppvsdbg/variableInfoEnrichers";
+import { unwrapSmartPointer } from "./shared/utils";
 
 export class CppAdapter implements IDebugAdapter {
     isSupportedSession(session: vscode.DebugSession): boolean {
@@ -68,11 +73,31 @@ export class CppAdapter implements IDebugAdapter {
             return null;
         }
 
+        // Run per-debugger variable-info enrichers (e.g. reconstruct bare Qt
+        // container types that GDB reports without template arguments).
+        if (session.type === "lldb") { await enrichLldbVariableInfo(session, info); }
+        else if (session.type === "cppvsdbg") { await enrichMsvcVariableInfo(session, info); }
+        else { await enrichGdbVariableInfo(session, info); }
+        logger.debug(`getVariableInfo post-enrich: "${varName}" typeName="${info.typeName ?? info.type}"`);
+
         // For Eigen types, query runtime .rows() / .cols() so Layer-2
         // detectVisualizableType can distinguish line / scatter / image.
-        if (/Eigen::(Matrix|Array|Vector|RowVector)/i.test(info.type)) {
-            const rows = await this._evalEigenDim(session, varName, "rows", info.frameId);
-            const cols = await this._evalEigenDim(session, varName, "cols", info.frameId);
+        if (/Eigen::(Matrix|Array|Vector|RowVector)/i.test(info.typeName ?? info.type)) {
+            // If the Eigen object is wrapped in a smart pointer, evaluate dimensions
+            // via the dereference expression so member access works correctly.
+            const ptrUnwrapped = unwrapSmartPointer(info.typeName ?? info.type);
+            const eigenVarName = ptrUnwrapped !== null
+                ? (ptrUnwrapped.kind === "lock_deref" ? `(*${varName}.lock())` : `(*${varName})`)
+                : varName;
+            // Skip _evalEigenDim for dimensions known at compile time (e.g. VectorXd
+            // has ColsAtCompileTime=1; m_storage.m_cols does not exist at runtime).
+            const ctDims = this._parseEigenCompileTimeDims(info.typeName ?? info.type);
+            const rows = (ctDims && ctDims[0] > 0)
+                ? ctDims[0]
+                : await this._evalEigenDim(session, eigenVarName, "rows", info.frameId);
+            const cols = (ctDims && ctDims[1] > 0)
+                ? ctDims[1]
+                : await this._evalEigenDim(session, eigenVarName, "cols", info.frameId);
             if (rows > 0 && cols > 0) {
                 info.shape = [rows, cols];
             }
@@ -93,10 +118,12 @@ export class CppAdapter implements IDebugAdapter {
         const internalProp = prop === "rows" ? "m_rows" : "m_cols";
         const exprs = session.type === "lldb"
             ? [
+                // On Windows/PDB, LLDB cannot JIT-compile function calls (.rows()),
+                // but can access struct fields via memory read (m_storage.m_rows).
+                // Try field access first; fall back to function call for Linux/macOS.
+                `${varName}.m_storage.${internalProp}`,
                 `${varName}.${prop}()`,
                 `(long long)${varName}.${prop}()`,
-                `${varName}.m_storage.${internalProp}`,
-                `(long long)${varName}.m_storage.${internalProp}`,
             ]
             : [
                 `(int)${varName}.${prop}()`,
@@ -111,6 +138,15 @@ export class CppAdapter implements IDebugAdapter {
             }
         }
         return 0;
+    }
+
+    /** Parse Eigen compile-time [rows, cols] from a type string; -1 = dynamic. */
+    private _parseEigenCompileTimeDims(typeStr: string): [number, number] | null {
+        const m = typeStr.match(/Eigen::(?:Matrix|Array)\s*<[^,]+,\s*(-?\d+),\s*(-?\d+)/);
+        if (m) { return [parseInt(m[1]), parseInt(m[2])]; }
+        if (/Eigen::RowVector/.test(typeStr)) { return [1, -1]; }
+        if (/Eigen::Vector/.test(typeStr))    { return [-1, 1]; }
+        return null;
     }
 
     /** Route evaluateExpression to the correct per-debugger implementation. */

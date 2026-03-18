@@ -21,6 +21,7 @@ import { ImageData, ImageFormat } from "../../../../../viewers/viewerTypes";
 import { ILibImageProvider } from "../../../../ILibProviders";
 import { evaluateExpression, fetchArrayData } from "../../debugger";
 import { resolveHWC, computeMinMax, bufferToBase64 } from "../utils";
+import { logger } from "../../../../../log/logger";
 
 // ── canHandle patterns ─────────────────────────────────────────────────────
 
@@ -73,7 +74,8 @@ export class OpenCvImageProvider implements ILibImageProvider {
                 const meta = JSON.parse(jsonStr) as { shape: number[]; dtype: string };
                 shape = meta.shape;
                 dtype = meta.dtype;
-            } catch {
+            } catch (e) {
+                logger.debug(`[OpenCV/Image] JSON parse failed for "${varName}": ${e}`);
                 return null;
             }
         }

@@ -367,7 +367,9 @@ export class PclPointCloudProvider implements ILibPointCloudProvider {
 
         // ── Step 3: data pointer ──────────────────────────────────────────────
         const dataPtr = await getPclDataPointer(session, varName, variablesReference, frameId);
-        logger.debug(`[PclPC] dataPtr=${dataPtr}`);        if (!dataPtr) {
+        logger.debug(`[PclPC] dataPtr=${dataPtr}`);
+        if (!dataPtr) {
+            logger.warn(`[PclPC] ${varName}: could not resolve data pointer`);
             return null;
         }
 

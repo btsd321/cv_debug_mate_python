@@ -20,6 +20,7 @@ import { ILibPointCloudProvider } from "../../ILibProviders";
 import { Open3DPointCloudProvider } from "./libs/open3d/pointCloudProvider";
 import { NumpyPointCloudProvider } from "./libs/numpy/pointCloudProvider";
 import { BuiltinsPointCloudProvider } from "./libs/builtins/pointCloudProvider";
+import { logger } from "../../../log/logger";
 
 // ── Registry ───────────────────────────────────────────────────────────────
 
@@ -41,9 +42,11 @@ export class PointCloudProvider {
         const typeName = info.typeName ?? "";
         for (const provider of LIB_POINTCLOUD_PROVIDERS) {
             if (provider.canHandle(typeName)) {
+                logger.debug(`[Python/PointCloud] dispatch "${varName}" (${typeName}) → ${provider.constructor.name}`);
                 return provider.fetchPointCloudData(this.session, varName, info);
             }
         }
+        logger.debug(`[Python/PointCloud] no provider matched type "${typeName}" for "${varName}"`);
         return null;
     }
 }

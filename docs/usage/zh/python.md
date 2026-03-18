@@ -79,7 +79,7 @@ npm run compile
 
 ## 可视化变量
 
-有三种方式打开变量的查看器：
+有四种方式打开变量的查看器：
 
 ### 方式一：MatrixViewer Debug 面板（推荐）
 
@@ -94,6 +94,16 @@ npm run compile
 ### 方式三：命令面板
 
 `Ctrl+Shift+P` → **MatrixViewer: View by MatrixViewer** → 输入变量名。
+
+### 方式四：编辑器右键菜单
+
+在断点暂停时，将光标置于**代码编辑器**中的任意变量名上。  
+若该变量可被可视化，右键菜单中会出现 **Visualize by MatrixViewer** 选项。
+
+![在 Python 变量上使用编辑器右键菜单，显示 Visualize by MatrixViewer](../../../assets/usage_images/editor_context_python.png)
+
+> **条件**：变量须已被当前作用域的 **MatrixViewer Debug** 面板检测到。  
+> 可在**设置**中关闭此功能：`matrixViewer.editorContextMenu`（默认: `true`）。
 
 ---
 

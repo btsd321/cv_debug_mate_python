@@ -16,6 +16,7 @@
 import * as vscode from "vscode";
 import { VariableInfo } from "../../IDebugAdapter";
 import { receiveBytesViaTcp } from "../../../utils/tcpTransfer";
+import { logger } from "../../../log/logger";
 
 // Re-export VariableInfo so legacy imports via utils/debugger still work.
 export { VariableInfo } from "../../IDebugAdapter";
@@ -93,7 +94,8 @@ export async function getVariablesInScope(
                 frameId,
             })
         );
-    } catch {
+    } catch (e) {
+        logger.debug(`[Python] getVariablesInScope failed: ${e}`);
         return [];
     }
 }
@@ -154,6 +156,7 @@ export async function getVariableInfo(
 
     const raw = await evaluateExpression(session, expr, frameId);
     if (!raw) {
+        logger.debug(`[Python] getVariableInfo: evaluate returned null for "${varName}"`);
         return null;
     }
 
@@ -161,7 +164,7 @@ export async function getVariableInfo(
         // debugpy wraps the result in quotes; strip them if present
         const jsonStr = raw.startsWith("'") ? raw.slice(1, -1) : raw;
         const parsed = JSON.parse(jsonStr);
-        return {
+        const result = {
             name: varName,
             type: parsed.typeName ?? "",
             typeName: parsed.typeName ?? "",
@@ -170,7 +173,10 @@ export async function getVariableInfo(
             length: parsed.length ?? null,
             frameId,
         };
-    } catch {
+        logger.debug(`[Python] getVariableInfo "${varName}": typeName="${result.typeName}" shape=${JSON.stringify(result.shape)} dtype=${result.dtype}`);
+        return result;
+    } catch (e) {
+        logger.debug(`[Python] getVariableInfo: JSON parse failed for "${varName}": ${e}`);
         return null;
     }
 }
@@ -238,7 +244,8 @@ async function fetchArraySmall(
         const dtype = info.dtype!;
         const buffer = numbersToBytesForDtype(flat, dtype);
         return { buffer, dtype, shape: info.shape! };
-    } catch {
+    } catch (e) {
+        logger.debug(`[Python] fetchArraySmall: JSON parse failed for "${varName}": ${e}`);
         return null;
     }
 }
@@ -298,7 +305,8 @@ export async function fetchListData(
     try {
         const jsonStr = result.startsWith("'") ? result.slice(1, -1) : result;
         return JSON.parse(jsonStr) as number[];
-    } catch {
+    } catch (e) {
+        logger.debug(`[Python] fetchListData: JSON parse failed for "${varName}": ${e}`);
         return null;
     }
 }

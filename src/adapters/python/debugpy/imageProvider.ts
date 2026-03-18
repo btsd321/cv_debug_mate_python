@@ -26,6 +26,7 @@ import { PilImageProvider } from "./libs/pil/imageProvider";
 import { TorchImageProvider } from "./libs/torch/imageProvider";
 import { OpenCvImageProvider } from "./libs/opencv/imageProvider";
 import { NumpyImageProvider } from "./libs/numpy/imageProvider";
+import { logger } from "../../../log/logger";
 
 // ── Registry ────────────────────────────────────────────────────────────
 // Checked in order; the first provider whose canHandle() returns true is used.
@@ -49,9 +50,11 @@ export class ImageProvider {
         const typeName = info.typeName ?? "";
         for (const provider of LIB_IMAGE_PROVIDERS) {
             if (provider.canHandle(typeName)) {
+                logger.debug(`[Python/Image] dispatch "${varName}" (${typeName}) → ${provider.constructor.name}`);
                 return provider.fetchImageData(this.session, varName, info);
             }
         }
+        logger.debug(`[Python/Image] no provider matched type "${typeName}" for "${varName}"`);
         return null;
     }
 }

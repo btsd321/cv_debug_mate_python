@@ -20,6 +20,7 @@ import { ILibPlotProvider } from "../../ILibProviders";
 import { NumpyPlotProvider } from "./libs/numpy/plotProvider";
 import { TorchPlotProvider } from "./libs/torch/plotProvider";
 import { BuiltinsPlotProvider } from "./libs/builtins/plotProvider";
+import { logger } from "../../../log/logger";
 
 // ── Registry ───────────────────────────────────────────────────────────────
 
@@ -41,9 +42,11 @@ export class PlotProvider {
         const typeName = info.typeName ?? "";
         for (const provider of LIB_PLOT_PROVIDERS) {
             if (provider.canHandle(typeName)) {
+                logger.debug(`[Python/Plot] dispatch "${varName}" (${typeName}) → ${provider.constructor.name}`);
                 return provider.fetchPlotData(this.session, varName, info);
             }
         }
+        logger.debug(`[Python/Plot] no provider matched type "${typeName}" for "${varName}"`);
         return null;
     }
 }

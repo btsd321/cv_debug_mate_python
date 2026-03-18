@@ -19,7 +19,7 @@
             "program": "${workspaceFolder}/build_gcc/demo",
             "args": [],
             "cwd": "${workspaceFolder}",
-            "stopAtEntry": false,
+            "stopAtEntry": true,
             "MIMode": "gdb",
             "miDebuggerPath": "gdb",
             "setupCommands": [
@@ -48,7 +48,7 @@
             ]
         },
         {
-            "name": "C++ Demo (LLVM / CodeLLDB)",
+            "name": "C++ Demo (WIN) (LLVM / CodeLLDB)",
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build_llvm/demo.exe",
@@ -57,6 +57,18 @@
             "stopOnEntry": false,
             "env": {
                 "PATH": "D:/Library/vcpkg/installed/x64-windows/debug/bin;C:/Program Files/LLVM/bin;${env:PATH}"
+            }
+        },
+        {
+            "name": "C++ Demo (LINUX) (LLVM / CodeLLDB)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build_llvm/demo",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopOnEntry": false,
+            "env": {
+                "PATH": "${HOME}/Library/vcpkg/installed/x64-linux/debug/bin:/usr/bin/llvm/bin:${env:PATH}"
             }
         }
     ]

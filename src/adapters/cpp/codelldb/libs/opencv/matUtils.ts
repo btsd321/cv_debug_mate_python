@@ -120,6 +120,43 @@ export async function getMatInfoFromVariables(
             variablesReference?: number;
         }[] = varsResp?.variables ?? [];
 
+        // Smart pointer wrapping (CodeLLDB synthetic formatter):
+        //   weak_ptr<T> / shared_ptr<T> / unique_ptr<T> exposes a "pointer" child.
+        //   Expanding "pointer" gives either:
+        //   (a) the pointed-to struct's fields directly (e.g. cv::Mat → flags/rows/cols/data)
+        //   (b) a container's formatted elements ([0],[1],...) for e.g. shared_ptr<vector<Mat>>
+        //   Strategy: recurse into ptrChild.variablesReference directly first (covers case a),
+        //   then look for [0] as a fallback (covers case b).
+        const ptrChild = vars.find(
+            (v) => v.name === "pointer" && (v.variablesReference ?? 0) > 0
+        );
+        if (ptrChild) {
+            // Case (a): ptrChildren are the inner object's struct fields
+            const innerFromPtr = await getMatInfoFromVariables(session, ptrChild.variablesReference!);
+            if (innerFromPtr && innerFromPtr.rows > 0 && innerFromPtr.cols > 0 && innerFromPtr.dataPtr) {
+                return innerFromPtr;
+            }
+            // Case (b): ptrChildren are formatted container elements; [0] IS the object
+            const ptrResp = await session.customRequest("variables", {
+                variablesReference: ptrChild.variablesReference!,
+            });
+            const ptrChildren: {
+                name: string;
+                value: string;
+                memoryReference?: string;
+                variablesReference?: number;
+            }[] = ptrResp?.variables ?? [];
+            const elem0 = ptrChildren.find(
+                (c) => c.name === "[0]" && (c.variablesReference ?? 0) > 0
+            );
+            if (elem0) {
+                const inner = await getMatInfoFromVariables(session, elem0.variablesReference!);
+                if (inner && inner.rows > 0 && inner.cols > 0 && inner.dataPtr) {
+                    return inner;
+                }
+            }
+        }
+
         // cv::Mat_<T> embeds the pixel data inside a base cv::Mat member.
         // Recurse into it when found.
         for (const v of vars) {

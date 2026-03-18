@@ -12,6 +12,7 @@ import { PlotData } from "../../../../../viewers/viewerTypes";
 import { ILibPlotProvider } from "../../../../ILibProviders";
 import { evaluateExpression } from "../../debugger";
 import { computeStats } from "../utils";
+import { logger } from "../../../../../log/logger";
 
 export class TorchPlotProvider implements ILibPlotProvider {
     canHandle(typeName: string): boolean {
@@ -35,7 +36,8 @@ export class TorchPlotProvider implements ILibPlotProvider {
         let values: number[];
         try {
             values = JSON.parse(result.replace(/^'|'$/g, "")) as number[];
-        } catch {
+        } catch (e) {
+            logger.debug(`[Torch/Plot] JSON parse failed for "${varName}": ${e}`);
             return null;
         }
 

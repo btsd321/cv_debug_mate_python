@@ -113,10 +113,13 @@ if(MSVC)
     # Ensure PDB is written even in Debug
     target_link_options(demo PRIVATE /DEBUG)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    # -gdwarf-4: emit DWARF (not CodeView) so CodeLLDB/LLDB can resolve type info
+    # -gdwarf-4:          emit DWARF (not CodeView) so CodeLLDB/LLDB can resolve type info
+    # -g3:                DWARF level 3 — includes macro definitions in .debug_macro;
+    #                     required so LLDB can evaluate CV_VERSION_MAJOR, QT_VERSION_MAJOR,
+    #                     EIGEN_WORLD_VERSION, PCL_MAJOR_VERSION etc. from included headers.
     # -fstandalone-debug: embed full type definitions, needed for types from
-    #   MSVC-compiled third-party headers (OpenCV, PCL, Eigen)
-    target_compile_options(demo PRIVATE -gdwarf-4 -fstandalone-debug -O0 -Wall -Wextra)
+    #                     MSVC-compiled third-party headers (OpenCV, PCL, Eigen)
+    target_compile_options(demo PRIVATE -gdwarf-4 -g3 -fstandalone-debug -O0 -Wall -Wextra)
 else()   # GCC or other
     target_compile_options(demo PRIVATE -g3 -O0 -Wall -Wextra)
 endif()

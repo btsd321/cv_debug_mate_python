@@ -18,12 +18,16 @@ fi
 CC_COMPILER="${CC:-clang}"
 CXX_COMPILER="${CXX:-clang++}"
 
+VCPKG_ROOT="${HOME}/Library/vcpkg"
+VCPKG_TOOLCHAIN="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+
 echo "[build_llvm] Configuring with ${GENERATOR} (${CXX_COMPILER})..."
 cmake -S "${SOURCE_DIR}" -B "${BUILD_DIR}" \
     -G "${GENERATOR}" \
     -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_C_COMPILER="${CC_COMPILER}" \
     -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
+    -DCMAKE_TOOLCHAIN_FILE="${VCPKG_TOOLCHAIN}" \
     -DWITH_OPENCV=ON \
     -DWITH_EIGEN=ON
 

@@ -14,6 +14,7 @@ import { buildImageWebviewHtml } from "../matImage/matWebview";
 import { buildPlotWebviewHtml } from "../plot/plotWebview";
 import { buildPointCloudWebviewHtml } from "../pointCloud/pointCloudWebview";
 import { getAdapter } from "../adapters/adapterRegistry";
+import { logger } from "../log/logger";
 
 type PanelKind = "image" | "plot" | "pointcloud";
 
@@ -134,8 +135,9 @@ export class PanelManager {
                     break;
                 }
             }
-        } catch {
-            // Silently skip panels whose variable is no longer in scope
+        } catch (e) {
+            // Variable may no longer be in scope after a step
+            logger.debug(`[PanelManager] refreshEntry skipped "${entry.varName}": ${e}`);
         }
     }
 

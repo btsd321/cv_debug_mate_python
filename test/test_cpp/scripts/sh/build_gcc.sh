@@ -17,10 +17,15 @@ fi
 VCPKG_ROOT="${HOME}/Library/vcpkg"
 VCPKG_TOOLCHAIN="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
 
-# Remove stale cache so CMAKE_TOOLCHAIN_FILE takes effect
-if [[ -f "${BUILD_DIR}/CMakeCache.txt" ]]; then
-    echo "[build_gcc] Removing stale CMakeCache.txt ..."
-    rm -f "${BUILD_DIR}/CMakeCache.txt"
+# ── Clean switch ──────────────────────────────────────────────────────────
+# Set to "ON" to wipe the build directory before configuring (full rebuild).
+# Set to "OFF" for incremental build.
+# CLEAN="ON"
+CLEAN="ON"
+
+if [[ "${CLEAN}" == "ON" ]]; then
+    echo "[build_gcc] CLEAN=ON — removing build directory: ${BUILD_DIR}"
+    rm -rf "${BUILD_DIR}"
 fi
 
 echo "[build_gcc] Configuring with ${GENERATOR}..."

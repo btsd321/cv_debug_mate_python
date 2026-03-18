@@ -19,6 +19,7 @@ import { PointCloudData } from "../../../../../viewers/viewerTypes";
 import { ILibPointCloudProvider } from "../../../../ILibProviders";
 import { evaluateExpression, fetchArrayData } from "../../debugger";
 import { computeBounds } from "../utils";
+import { logger } from "../../../../../log/logger";
 
 export class Open3DPointCloudProvider implements ILibPointCloudProvider {
     canHandle(typeName: string): boolean {
@@ -46,7 +47,8 @@ export class Open3DPointCloudProvider implements ILibPointCloudProvider {
         try {
             const jsonStr = metaResult.startsWith("'") ? metaResult.slice(1, -1) : metaResult;
             meta = JSON.parse(jsonStr) as { n: number; hasColors: boolean };
-        } catch {
+        } catch (e) {
+            logger.debug(`[Open3D] fetchPointCloudData: JSON parse failed for "${varName}": ${e}`);
             return null;
         }
 

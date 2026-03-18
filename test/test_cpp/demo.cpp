@@ -21,7 +21,18 @@
  *   QImage                              → Image Viewer (RGB888 / Grayscale8)
  *   QVector<double> / QList<float>      → Plot Viewer  (1D)
  *   QPolygonF / QVector<QVector2D>      → Plot Viewer  (2D Scatter)
- *   QVector<QVector3D>                     → Point Cloud Viewer
+ *   QVector<QVector3D>                  → Point Cloud Viewer
+ *
+ *   --- Smart pointer / raw pointer wrappers (auto-deref) ---
+ *   std::shared_ptr<cv::Mat>                    → Image Viewer
+ *   std::unique_ptr<cv::Mat>                    → Image Viewer
+ *   std::weak_ptr<cv::Mat>                      → Image Viewer
+ *   std::shared_ptr<std::vector<double>>        → Plot Viewer  (1D)
+ *   std::unique_ptr<Eigen::MatrixXd>            → Image Viewer
+ *   std::shared_ptr<pcl::PointCloud<...>>       → Point Cloud Viewer
+ *   cv::Mat*                                    → Image Viewer  (raw pointer)
+ *   std::vector<double>*                        → Plot Viewer   (raw pointer)
+ *   std::vector<cv::Point3f>*                   → Point Cloud Viewer (raw pointer)
  *
  * Dependencies (all optional — missing libs are guarded by #ifdef):
  *   OpenCV  ≥ 4.x   (HAVE_OPENCV)
@@ -31,6 +42,7 @@
  */
 
 #include <cmath>
+#include <memory>
 #include <vector>
 #include <array>
 #include <cstdint>
@@ -82,17 +94,6 @@ int main()
     std::vector<float> ramp_1d(N);
     for (int i = 0; i < N; ++i) {
         ramp_1d[i] = static_cast<float>(i);
-    }
-
-    // =========================================================================
-    // std::vector<float> with 2 columns (Nx2, as pairs)  →  2D Scatter
-    // (stored as interleaved x,y — viewer reads col-0=X col-1=Y)
-    // =========================================================================
-    std::vector<float> scatter_circle(300 * 2);
-    for (int i = 0; i < 300; ++i) {
-        double a = i * 2.0 * 3.14159265 / 300;
-        scatter_circle[i * 2 + 0] = static_cast<float>(std::cos(a));
-        scatter_circle[i * 2 + 1] = static_cast<float>(std::sin(a));
     }
 
     // =========================================================================
@@ -314,6 +315,54 @@ int main()
     }
 
 #endif  // HAVE_QT
+
+    // =========================================================================
+    // Smart pointers & raw pointers  →  auto-deref, same viewer as inner type
+    // =========================================================================
+#ifdef HAVE_OPENCV
+    // shared_ptr<cv::Mat>  →  Image Viewer  (deref: (*sp_mat))
+    auto sp_mat = std::make_shared<cv::Mat>(mat_bgr.clone());
+
+    // unique_ptr<cv::Mat>  →  Image Viewer  (deref: (*up_mat))
+    auto up_mat = std::make_unique<cv::Mat>(mat_gray.clone());
+
+    // weak_ptr<cv::Mat>  →  Image Viewer  (deref: (*wp_mat.lock()))
+    std::weak_ptr<cv::Mat> wp_mat = sp_mat;
+
+    // raw pointer cv::Mat*  →  Image Viewer  (deref: (*p_mat))
+    cv::Mat* p_mat = &mat_f32;
+#endif
+
+    // shared_ptr<std::vector<double>>  →  Plot Viewer (1D)
+    auto sp_signal = std::make_shared<std::vector<double>>(signal_1d);
+
+    // unique_ptr<std::vector<double>>  →  Plot Viewer (1D)
+    auto up_signal = std::make_unique<std::vector<double>>(signal_1d);
+
+    // weak_ptr<std::vector<double>>  →  Plot Viewer (1D)
+    std::weak_ptr<std::vector<double>> wp_signal = sp_signal;
+
+    // raw pointer std::vector<double>*  →  Plot Viewer (1D)
+    std::vector<double>* p_signal = &signal_1d;
+
+#ifdef HAVE_EIGEN
+    // unique_ptr<Eigen::MatrixXd>  →  Image Viewer
+    auto up_eigen_mat = std::make_unique<Eigen::MatrixXd>(eigen_mat);
+
+    // shared_ptr<Eigen::VectorXd>  →  Plot Viewer (1D)
+    auto sp_eigen_vec = std::make_shared<Eigen::VectorXd>(eigen_vec);
+
+    // raw pointer Eigen::MatrixXd*  →  Image Viewer
+    Eigen::MatrixXd* p_eigen_mat = &eigen_mat;
+#endif
+
+#if defined(HAVE_OPENCV) && defined(HAVE_PCL)
+    // shared_ptr<pcl::PointCloud<pcl::PointXYZ>>  →  Point Cloud Viewer
+    auto sp_pcl_xyz = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>(pcl_xyz);
+
+    // raw pointer std::vector<cv::Point3f>*  →  Point Cloud Viewer
+    std::vector<cv::Point3f>* p_cloud = &cloud_xyz;
+#endif
 
     // =========================================================================
     // BREAKPOINT — open Matrix Viewer panel and click any variable above

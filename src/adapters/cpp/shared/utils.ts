@@ -5,6 +5,129 @@
  * Mirrors the role of src/adapters/python/libs/utils.ts for the C++ side.
  */
 
+// ── Smart pointer helpers ─────────────────────────────────────────────────
+
+/**
+ * Describes how to dereference a pointer wrapper in a C++ debug expression.
+ *
+ *   "deref"      → `(*varName)`         — shared_ptr, unique_ptr, raw pointer
+ *   "lock_deref" → `(*varName.lock())`  — weak_ptr (must be locked before deref)
+ */
+export type SmartPtrDerefKind = "deref" | "lock_deref";
+
+export interface SmartPtrUnwrapResult {
+    /** The inner (pointed-to) type, e.g. "cv::Mat" from "shared_ptr<cv::Mat>". */
+    innerType: string;
+    /** The dereference strategy to use when building debug expressions. */
+    kind: SmartPtrDerefKind;
+}
+
+/**
+ * If `typeName` is a pointer wrapper, return the inner type and deref strategy.
+ * Returns `null` when the type is not a supported wrapper.
+ *
+ * Handled wrappers:
+ *   std::shared_ptr<T>    std::unique_ptr<T>    std::weak_ptr<T>
+ *   boost::shared_ptr<T>
+ *   QSharedPointer<T>     QScopedPointer<T>
+ *   T*  /  T * const  /  const T*   (raw C pointer, single indirection only)
+ *
+ * Examples:
+ *   "std::shared_ptr<cv::Mat>"           → { innerType: "cv::Mat",          kind: "deref" }
+ *   "std::weak_ptr<Eigen::MatrixXd>"     → { innerType: "Eigen::MatrixXd",  kind: "lock_deref" }
+ *   "cv::Mat *"                          → { innerType: "cv::Mat",          kind: "deref" }
+ *   "const std::vector<double> *"        → { innerType: "std::vector<double>", kind: "deref" }
+ *   "cv::Mat"                            → null
+ */
+export function unwrapSmartPointer(typeName: string): SmartPtrUnwrapResult | null {
+    const trimmed = typeName.trim();
+
+    // ── Template-based wrappers (shared_ptr, unique_ptr, weak_ptr, Qt) ───────
+    const TEMPLATE_WRAPPERS: { prefix: string; kind: SmartPtrDerefKind }[] = [
+        { prefix: "std::shared_ptr",         kind: "deref" },
+        { prefix: "std::__1::shared_ptr",    kind: "deref" },   // libc++ (LLDB/macOS)
+        { prefix: "std::unique_ptr",         kind: "deref" },
+        { prefix: "std::__1::unique_ptr",    kind: "deref" },
+        // libc++ internal alias for unique_ptr: std::_MakeUniq<T>::__single_object
+        // LLDB reports `auto p = make_unique<T>()` with this type string.
+        { prefix: "std::_MakeUniq",          kind: "deref" },
+        { prefix: "std::__1::_MakeUniq",     kind: "deref" },
+        { prefix: "std::weak_ptr",           kind: "lock_deref" },
+        { prefix: "std::__1::weak_ptr",      kind: "lock_deref" },
+        { prefix: "boost::shared_ptr",       kind: "deref" },
+        { prefix: "QSharedPointer",          kind: "deref" },
+        { prefix: "QScopedPointer",          kind: "deref" },
+    ];
+
+    for (const { prefix, kind } of TEMPLATE_WRAPPERS) {
+        if (!trimmed.startsWith(prefix)) {
+            continue;
+        }
+        const rest = trimmed.slice(prefix.length).trimStart();
+        if (!rest.startsWith("<")) {
+            continue;
+        }
+        // Bracket-count to find the matching closing '>'
+        let depth = 0;
+        let i = 0;
+        for (; i < rest.length; i++) {
+            if (rest[i] === "<") { depth++; }
+            else if (rest[i] === ">") {
+                depth--;
+                if (depth === 0) { break; }
+            }
+        }
+        if (depth !== 0) {
+            continue; // malformed type string
+        }
+        const inner = rest.slice(1, i).trim(); // strip outer < >
+        if (inner.length > 0) {
+            return { innerType: inner, kind };
+        }
+    }
+
+    // ── Raw C pointer: T* / T * / const T * / T * const ─────────────────────
+    // Algorithm:
+    //   1. Strip trailing "const" (const pointer: T * const)
+    //   2. Strip trailing "*"
+    //   3. Strip leading "const" (pointer to const: const T *)
+    //   4. Verify the result has balanced angle brackets (guards against
+    //      false matches on template params like std::vector<int*>)
+    //   5. Exclude scalar/special types that cannot be visualized
+    let s = trimmed;
+    // Step 1: optional trailing " const"
+    s = s.replace(/\s+const\s*$/, "").trimEnd();
+    // Step 2: must end with * (single indirection only — reject T**)
+    if (!s.endsWith("*")) {
+        return null;
+    }
+    if (s.length >= 2 && s[s.length - 2] === "*") {
+        return null; // double pointer
+    }
+    s = s.slice(0, -1).trimEnd();
+    // Step 3: optional leading "const "
+    s = s.replace(/^const\s+/, "").trim();
+    if (s.length === 0) {
+        return null;
+    }
+    // Step 4: balanced angle brackets
+    let depth = 0;
+    for (const c of s) {
+        if (c === "<") { depth++; }
+        else if (c === ">") { depth--; }
+        if (depth < 0) { return null; }
+    }
+    if (depth !== 0) {
+        return null;
+    }
+    // Step 5: exclude non-visualizable bare types
+    const bare = s.replace(/^(?:const|volatile)\s+/, "").trim();
+    if (!bare || /^(?:void|char|wchar_t|char8_t|char16_t|char32_t)$/.test(bare)) {
+        return null;
+    }
+    return { innerType: s, kind: "deref" };
+}
+
 // ── C++ type helpers ─────────────────────────────────────────────────────
 
 /**

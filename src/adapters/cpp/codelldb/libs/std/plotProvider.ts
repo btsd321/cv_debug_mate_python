@@ -74,6 +74,16 @@ async function getDataPointer(
         `&${varName}[0]`,
         `${varName}.data()`,
     ];
+    // For weak_ptr lock_deref (*xxx.lock()): .lock() fails in LLDB.
+    // Use internal raw pointer directly:
+    //   libstdc++: _M_ptr   libc++: __ptr_   MSVC STL: _Ptr
+    const lockDerefM = varName.match(/^\(\*(.+)\.lock\(\)\)$/);
+    if (lockDerefM) {
+        const wpName = lockDerefM[1];
+        for (const ptrField of ["_M_ptr", "__ptr_", "_Ptr"]) {
+            exprs.push(`${wpName}.${ptrField}->data()`, `${wpName}.${ptrField}[0]`);
+        }
+    }
     return tryGetDataPointer(session, exprs, info.frameId);
 }
 
@@ -144,6 +154,7 @@ export class StdPlotProvider implements ILibPlotProvider {
         const dataPtr = await getDataPointer(session, varName, info);
         logger.debug(`[StdPlot] ${varName}: dataPtr=${dataPtr}`);
         if (!dataPtr) {
+            logger.warn(`[StdPlot] ${varName}: could not resolve data pointer`);
             return null;
         }
 
@@ -151,7 +162,7 @@ export class StdPlotProvider implements ILibPlotProvider {
         logger.debug(`[StdPlot] ${varName}: reading ${totalBytes} bytes (dtype=${dtype}, size=${size})`);
         const buffer = await readMemoryChunked(session, dataPtr, totalBytes);
         if (!buffer) {
-            logger.debug(`[StdPlot] ${varName}: readMemoryChunked returned null`);
+            logger.warn(`[StdPlot] ${varName}: readMemoryChunked returned null`);
             return null;
         }
 

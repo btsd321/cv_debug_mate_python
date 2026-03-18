@@ -56,6 +56,7 @@ src/
 │   └── cpp/                  # C++ adapter — routes by session.type to per-debugger folders
 │       ├── cppTypes.ts       # Layer-1 type detection (cv::Mat, Eigen, std::vector, pcl, C-arrays)
 │       ├── cppAdapter.ts     # Implements IDebugAdapter; routes to gdb/ | codelldb/ | cppvsdbg/
+│       ├── IVariableInfoEnricher.ts  # Compatibility-layer interface: canEnrich / enrich (fills incomplete type strings)
 │       ├── shared/
 │       │   ├── debuggerBase.ts   # Shared DAP utilities (getCurrentFrameId, readMemoryChunked, …)
 │       │   └── utils.ts          # Shared buffer/dtype/stats helpers (used by all debugger libs/)
@@ -63,17 +64,20 @@ src/
 │       │   └── (empty — utils.ts moved to shared/)
 │       ├── gdb/              # GDB (session.type = "cppdbg") — (long long) casts, "repl" context
 │       │   ├── debugger.ts   # GDB-specific evaluate / getVariablesInScope / pointer expressions
-│       │   ├── imageProvider.ts  # Coordinator for GDB image providers
-│       │   ├── plotProvider.ts   # Coordinator for GDB plot providers
-│       │   ├── pointCloudProvider.ts # Coordinator for GDB point cloud providers
+│       │   ├── imageProvider.ts          # Coordinator for GDB image providers
+│       │   ├── plotProvider.ts           # Coordinator for GDB plot providers
+│       │   ├── pointCloudProvider.ts     # Coordinator for GDB point cloud providers
+│       │   ├── variableInfoEnrichers.ts  # Coordinator for GDB IVariableInfoEnricher instances
 │       │   └── libs/
 │       │   ├── utils.ts      # Re-exports ../../shared/utils
-│       │       ├── opencv/   ├── eigen/   ├── pcl/   ├── std/   └── qt/  # (same layout as cppvsdbg/)
+│       │       ├── opencv/   ├── eigen/   ├── pcl/   ├── std/
+│       │       └── qt/       # variableInfoEnricher.ts + existing files
 │       ├── cppvsdbg/         # vsdbg (session.type = "cppvsdbg") — MSVC, (long long) casts
 │       │   ├── debugger.ts
 │       │   ├── imageProvider.ts
 │       │   ├── plotProvider.ts
 │       │   ├── pointCloudProvider.ts
+│       │   ├── variableInfoEnrichers.ts
 │       │   └── libs/
 │       │       ├── utils.ts      # Re-exports ../../shared/utils
 │       │       ├── opencv/   ├── eigen/   ├── pcl/   ├── std/   └── qt/
@@ -82,6 +86,7 @@ src/
 │           ├── imageProvider.ts
 │           ├── plotProvider.ts
 │           ├── pointCloudProvider.ts
+│           ├── variableInfoEnrichers.ts
 │           └── libs/
 │               ├── utils.ts      # Re-exports ../../shared/utils
 │               ├── opencv/   ├── eigen/   ├── pcl/   ├── std/   └── qt/
@@ -111,8 +116,9 @@ media/                        # Static front-end assets (served by webviews)
 
 - **Adapter pattern** — `IDebugAdapter` is the single interface the extension core depends on. Python (`PythonAdapter`) and C++ (`CppAdapter`) are separate implementations registered in `adapterRegistry.ts`. Adding a new language means implementing `IDebugAdapter` and adding one line to the registry.
 - **Per-library provider pattern** — Each language adapter has a `libs/` subdirectory. Each third-party library (numpy, PIL, torch, opencv, eigen, pcl, open3d, …) implements one or more of `ILibImageProvider` / `ILibPlotProvider` / `ILibPointCloudProvider` from `adapters/ILibProviders.ts`. The coordinator files (`imageProvider.ts`, `plotProvider.ts`, `pointCloudProvider.ts`) iterate a `LIB_*_PROVIDERS` list and delegate to the first whose `canHandle()` returns true. **Adding a new library requires only creating one file in `libs/<libName>/` and appending it to the coordinator's list — no other files need changing.**
+- **Variable-info enricher pattern** — `adapters/cpp/IVariableInfoEnricher.ts` is the compatibility-layer interface for filling in incomplete type metadata (e.g. GDB omitting template arguments from Qt container types). Each library implements `IVariableInfoEnricher` in `libs/<libName>/variableInfoEnricher.ts`. The per-debugger coordinator (`variableInfoEnrichers.ts`) iterates a list and delegates to the first whose `canEnrich()` returns true. `cppAdapter.ts` calls the routed coordinator inside `getVariableInfo()` and has no knowledge of Qt or any other specific library. **Never add library-specific enrichment logic directly to `cppAdapter.ts`.**
 - **Language-agnostic viewer types** — `viewers/viewerTypes.ts` defines `ImageData`, `PlotData`, `PointCloudData`. All webview builders and `PanelManager` only depend on these types, never on language- or library-specific code.
-- **Two-layer type detection** — `basicTypeDetect()` (fast string match) in the TreeView, `detectVisualizableType()` (shape + dtype) for visualization. Each adapter implements both layers independently.
+- **Two-layer type detection** — `basicTypeDetect()` (fast string match) in the TreeView, `detectVisualizableType()` (shape + dtype) for visualization. Each adapter implements both layers independently. Both layers transparently unwrap pointer wrappers (`shared_ptr`, `unique_ptr`, `weak_ptr`, raw `T*`) before pattern matching; GDB uses `(*varName._M_ptr)` for `weak_ptr` (libstdc++ internal field, avoids chaining method calls on temporaries), cppvsdbg uses `(*varName._Ptr)` (MSVC STL `_Ptr_base<T>::_Ptr` raw pointer member, same reason), CodeLLDB uses `(*varName.lock())`; all others use `(*varName)`.
 - **DAP evaluate for Python** — All Python data is fetched via `debugSession.customRequest("evaluate", …)`. No memory reads. Small arrays → JSON (`tolist()`), large arrays → Base64 (`tobytes()`).
 - **Webview CSP** — Every webview sets a strict Content-Security-Policy with a per-load nonce.
 - **One panel per variable** — `PanelManager` deduplicates: clicking a variable that already has an open panel just focuses it.
@@ -148,6 +154,7 @@ media/                        # Static front-end assets (served by webviews)
 
 - `adapters/IDebugAdapter.ts` → **interface only**: `VariableInfo`, `VisualizableKind`, `IDebugAdapter`. No logic.
 - `adapters/ILibProviders.ts` → **interface only**: `ILibImageProvider`, `ILibPlotProvider`, `ILibPointCloudProvider`. No logic.
+- `adapters/cpp/IVariableInfoEnricher.ts` → **interface only**: `IVariableInfoEnricher`. No logic.
 - `adapters/adapterRegistry.ts` → registry lookup only; no data fetching.
 - `adapters/<lang>/<lang>Types.ts` → **pure functions only**, no VS Code API, no `async`.
 - `adapters/cpp/shared/debuggerBase.ts` → shared DAP utilities with NO debugger-type branching.

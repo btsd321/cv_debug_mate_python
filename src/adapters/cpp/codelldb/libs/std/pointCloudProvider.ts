@@ -148,6 +148,7 @@ export class StdPointCloudProvider implements ILibPointCloudProvider {
         // ── Step 2: data pointer ──────────────────────────────────────────────
         const dataPtr = await getDataPointer(session, varName, info);
         if (!dataPtr) {
+            logger.warn(`[StdPC] ${varName}: could not resolve data pointer`);
             return null;
         }
 

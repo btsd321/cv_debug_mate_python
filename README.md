@@ -55,10 +55,12 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 | **Image (2D)** | `cv::Mat` (OpenCV) | 🖼️ Image Viewer |
 | | `Eigen::Matrix<T,R,C>` / `Eigen::Array<T,R,C>` (rows>1, cols>2) | 🖼️ Image Viewer |
 | | `QImage` (Qt5 / Qt6) | 🖼️ Image Viewer |
+| | `shared_ptr<T>` / `unique_ptr<T>` / `weak_ptr<T>` / `T*` where `T` is any image type above | 🖼️ Image Viewer |
 | **Point Cloud (3D)** | `pcl::PointCloud<PointXYZ>` / `<PointXYZRGB>` / `<PointXYZI>` | 📊 3D Viewer |
 | | `std::vector<cv::Point3f>` / `std::vector<cv::Point3d>` | 📊 3D Viewer |
 | | `std::array<cv::Point3f, N>` / `std::array<cv::Point3d, N>` | 📊 3D Viewer |
 | | `QVector<QVector3D>` (Qt5 / Qt6) | 📊 3D Viewer |
+| | `shared_ptr<T>` / `unique_ptr<T>` / `weak_ptr<T>` / `T*` where `T` is any point cloud type above | 📊 3D Viewer |
 | **Plot (1D/2D)** | `Eigen::VectorX*` / `Eigen::RowVectorX*` | 📈 1D Chart |
 | | `Eigen::Matrix<T,N,1>` / `Eigen::Matrix<T,1,N>` | 📈 1D Chart |
 | | `Eigen::Matrix<T,N,2>` (N×2) | 📈 2D Scatter (col0=X, col1=Y) |
@@ -66,6 +68,7 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 | | `QVector<T>` / `QList<T>` (numeric scalar, Qt5 / Qt6) | 📈 1D Chart |
 | | `QPolygonF` (Qt5 / Qt6) | 📈 2D Scatter |
 | | `QVector<QVector2D>` / `QList<QVector2D>` (Qt5 / Qt6) | 📈 2D Scatter |
+| | `shared_ptr<T>` / `unique_ptr<T>` / `weak_ptr<T>` / `T*` where `T` is any plot type above | 📈 1D/2D Chart |
 
 > **Eigen routing rules** (C++): query runtime `.rows()` / `.cols()` to decide viewer type:
 > - `cols == 1` or `rows == 1` → **1D line plot**
@@ -84,6 +87,7 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 | **🔗 View Sync** | Pair variables for synchronized zoom/pan/rotation across viewers |
 | **🔍 Auto Detection** | Variables panel auto-detects all visualizable types in current scope |
 | **🔄 Auto Refresh** | Webview auto-updates when stepping through code |
+| **🖱️ Editor Context Menu** | Right-click a variable name in the code editor to visualize it directly (shown only when the variable is visualizable in the current debug scope) |
 
 ---
 
@@ -135,16 +139,6 @@ or use the Command Palette (`Ctrl+Shift+P`) → **MatrixViewer: View by MatrixVi
 
 1. Download `.vsix` file
 2. Extensions view (`Ctrl+Shift+X`) → `...` → "Install from VSIX..."
-
-### From Source
-
-```bash
-git clone https://github.com/dull-bird/cv_debug_mate_python
-cd cv_debug_mate_python
-npm install
-npm run compile
-# Press F5 to run in Extension Development Host
-```
 
 ---
 

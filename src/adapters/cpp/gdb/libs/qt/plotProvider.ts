@@ -94,13 +94,17 @@ function bytesForDtype(dtype: string): number {
 
 export class QtPlotProvider implements ILibPlotProvider {
     canHandle(typeName: string): boolean {
-        return (
+        const result = (
             isQVectorNumericScalar(typeName) ||
             isQVectorOf2D(typeName) ||
             isQPolygonF(typeName) ||
             // QList<T> with numeric scalar (Qt6 alias)
             (/\bQList\s*</.test(typeName) && isQVectorNumericScalar(typeName))
         );
+        if (!result) {
+            logger.debug(`QtPlotProvider.canHandle: false for typeName="${typeName}"`);
+        }
+        return result;
     }
 
     async fetchPlotData(

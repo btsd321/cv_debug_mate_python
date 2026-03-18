@@ -27,7 +27,7 @@ import { PlotData } from "../../../../../viewers/viewerTypes";
 import { ILibPlotProvider } from "../../../../ILibProviders";
 import { readMemoryChunked } from "../../debugger";
 import { typedBufferToNumbers, computeStats } from "../utils";
-import { eigenDtype, bytesPerEigenDtype, evalEigenDim, getEigenDataPointer, getEigenInfoFromTree } from "./eigenUtils";
+import { eigenDtype, bytesPerEigenDtype, evalEigenDim, getEigenDataPointer, getEigenInfoFromTree, parseEigenCompileTimeDims } from "./eigenUtils";
 import { logger } from "../../../../../log/logger";
 
 // ── Provider ──────────────────────────────────────────────────────────────
@@ -54,12 +54,17 @@ export class EigenPlotProvider implements ILibPlotProvider {
         if (info.shape && info.shape.length >= 2 && info.shape[0] > 0 && info.shape[1] > 0) {
             [rows, cols] = info.shape;
         } else {
-            rows = await evalEigenDim(session, varName, "rows", frameId);
-            cols = await evalEigenDim(session, varName, "cols", frameId);
+            // Parse compile-time dimensions first (no LLDB calls needed).
+            // Only call evalEigenDim for dimensions that are dynamic at compile time
+            // (avoids "Attribute not defined" for fixed-cols types like VectorXd where
+            // m_storage.m_cols does not exist at runtime).
+            const ctDims = parseEigenCompileTimeDims(typeStr);
+            rows = (ctDims && ctDims[0] > 0) ? ctDims[0] : await evalEigenDim(session, varName, "rows", frameId);
+            cols = (ctDims && ctDims[1] > 0) ? ctDims[1] : await evalEigenDim(session, varName, "cols", frameId);
         }
-        logger.debug(`[EigenPlot] ${varName}: rows=${rows} cols=${cols} from eval`);
+        logger.debug(`[EigenPlot] ${varName}: rows=${rows} cols=${cols}`);
 
-        // Fallback: variables tree (LLDB on Windows/MSVC — all evaluations return null)
+        // Fallback 2: variables tree (LLDB on Windows/MSVC — all evaluations return null)
         if ((rows <= 0 || cols <= 0) && (info.variablesReference ?? 0) > 0) {
             // Derive compile-time cols from type string.
             // Full template:  Eigen::Matrix<T, Rows, Cols, ...>

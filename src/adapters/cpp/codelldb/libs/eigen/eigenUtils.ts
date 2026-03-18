@@ -59,13 +59,15 @@ export async function evalEigenDim(
     frameId?: number
 ): Promise<number> {
     // m_rows / m_cols are Eigen's internal DenseStorage members — accessible
-    // even when LLDB cannot call C++ member functions.
+    // as struct fields without JIT compilation.  Try them first so that
+    // LLDB on Windows/PDB (where method calls fail) does not emit Syntax error
+    // logs before reaching the working expression.
     const internalProp = prop === "rows" ? "m_rows" : "m_cols";
     const exprs = [
-        `${varName}.${prop}()`,
-        `(long long)${varName}.${prop}()`,
         `${varName}.m_storage.${internalProp}`,
         `(long long)${varName}.m_storage.${internalProp}`,
+        `${varName}.${prop}()`,
+        `(long long)${varName}.${prop}()`,
     ];
     for (const expr of exprs) {
         const res = await evaluateExpression(session, expr, frameId);
@@ -81,6 +83,27 @@ export async function evalEigenDim(
         }
     }
     return 0;
+}
+
+// ── Compile-time dimension parser ────────────────────────────────────────
+
+/**
+ * Parse compile-time [Rows, Cols] from an Eigen type template string.
+ * Returns [rows, cols] where a value > 0 means fixed at compile time.
+ * Dynamic (-1) and unresolvable dimensions return -1.
+ * Returns null when the type string is not a recognised Eigen template.
+ *
+ * Examples:
+ *   "Eigen::Matrix<double, -1, 1, 0, -1, 1>"  → [-1, 1]  (VectorXd)
+ *   "Eigen::Matrix<double, -1, -1, 0, -1, -1>" → [-1, -1] (MatrixXd)
+ *   "Eigen::Matrix<float, 4, 1, 0, 4, 1>"      → [4, 1]   (Vector4f)
+ */
+export function parseEigenCompileTimeDims(typeStr: string): [number, number] | null {
+    const m = typeStr.match(/Eigen::(?:Matrix|Array)\s*<[^,]+,\s*(-?\d+),\s*(-?\d+)/);
+    if (m) { return [parseInt(m[1]), parseInt(m[2])]; }
+    if (/Eigen::RowVector/.test(typeStr)) { return [1, -1]; }
+    if (/Eigen::Vector/.test(typeStr))    { return [-1, 1]; }
+    return null;
 }
 
 // ── Data pointer ──────────────────────────────────────────────────────────
@@ -145,6 +168,47 @@ export async function getEigenInfoFromTree(
             `[getEigenInfoFromTree] top children: ` +
             top.map(v => `${v.name}=${v.value ?? "?"}`).join(", ")
         );
+
+        // CodeLLDB smart pointer formatter (shared_ptr / unique_ptr / weak_ptr):
+        //   synthetic children are "pointer" + "[raw]".
+        //   Expanding "pointer" gives either:
+        //   (a) the inner object's struct fields (e.g. Eigen base class children)
+        //   (b) formatted container elements [0],[1],...
+        //   Strategy: use pointer's children as the new "top" (case a),
+        //   examining [0] as fallback only for container-wrapped objects (case b).
+        if (
+            !top.find((v) => v.name === "m_storage") &&
+            !top.find((v) => /^Eigen::/.test(v.name))
+        ) {
+            const ptrChild = top.find(
+                (v) => v.name === "pointer" && (v.variablesReference ?? 0) > 0
+            );
+            if (ptrChild) {
+                const ptrChildren = await expand(ptrChild.variablesReference!);
+                // Case (a): ptrChildren are the Eigen object's fields / base class
+                const hasMStorage = ptrChildren.find((v) => v.name === "m_storage");
+                const hasEigenBase = ptrChildren.find((v) => /^Eigen::/.test(v.name));
+                if (hasMStorage || hasEigenBase) {
+                    top = ptrChildren;
+                    logger.debug(
+                        `[getEigenInfoFromTree] smart-ptr unwrap via pointer (direct fields); new top: ` +
+                        top.map(v => v.name).join(", ")
+                    );
+                } else {
+                    // Case (b): look for [0] (container-wrapped Eigen object)
+                    const elem0 = ptrChildren.find(
+                        (v) => v.name === "[0]" && (v.variablesReference ?? 0) > 0
+                    );
+                    if (elem0) {
+                        top = await expand(elem0.variablesReference!);
+                        logger.debug(
+                            `[getEigenInfoFromTree] smart-ptr unwrap via pointer->[0]; new top: ` +
+                            top.map(v => v.name).join(", ")
+                        );
+                    }
+                }
+            }
+        }
 
         // CodeLLDB may expose the Eigen base class as a single synthetic child:
         // "Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1>>"
