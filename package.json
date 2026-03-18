@@ -2,7 +2,7 @@
   "name": "matrix-viewer",
   "displayName": "MatrixViewer Debug",
   "description": "A Visual Studio Code extension for visualizing 1D/2D/3D data structures during debugging. Supports **Python** and **C++**.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "btsd321",
   "license": "MIT",
   "engines": {
