@@ -88,48 +88,52 @@ async function moduleVersionFromPy(
 // ── Filename / path fallbacks ─────────────────────────────────────────────
 
 /**
- * Extract OpenCV version from a loaded DLL filename.
+ * Extract OpenCV version from a loaded module filename.
  *
- * OpenCV encodes the version as a compact decimal suffix on the DLL name:
- *   opencv_core480d.dll  →  4.8.0
- *   opencv_world4100.dll →  4.10.0
- *
- * Pattern: <libname><major><minor1-2><patch>[d].dll
+ * Windows DLL: opencv_core480d.dll  →  4.8.0
+ * Linux SO:    libopencv_core.so.4.8.0  →  4.8.0
  */
 function cvVersionFromModules(mods: DapModule[]): string | null {
     const mod = mods.find((m) =>
-        /opencv_(?:world|core|videoio|imgproc)\d*d?\.(?:dll|so)/i.test(m.name ?? "")
+        /opencv_(?:world|core|videoio|imgproc)/i.test(m.name ?? "")
     );
     if (!mod) { return null; }
-    const m = (mod.name ?? "").match(
-        /opencv_(?:world|core|videoio|imgproc)(\d)(\d{1,2})(\d)d?\.(?:dll|so)/i
+    const name = mod.name ?? "";
+    // Windows: opencv_core480d.dll → 4.8.0
+    const winM = name.match(
+        /opencv_(?:world|core|videoio|imgproc)(\d)(\d{1,2})(\d)d?\.dll/i
     );
-    if (m) { return `${m[1]}.${m[2]}.${m[3]}`; }
+    if (winM) { return `${winM[1]}.${winM[2]}.${winM[3]}`; }
+    // Linux: libopencv_core.so.4.8.0
+    const linuxM = name.match(/\.so\.(\d+\.\d+\.\d+)$/);
+    if (linuxM) { return linuxM[1]; }
     return null;
 }
 
 /**
- * Extract Qt version from a loaded DLL path or filename.
+ * Extract Qt version from a loaded module path or filename.
  *
- * Standard Qt installer places DLLs under  …\Qt\<version>\<platform>\bin\
- * so the full version can be read from the path:
- *   C:\Qt\5.15.2\msvc2019_64\bin\Qt5Cored.dll  →  "5.15.2"
- *
- * When the path doesn't contain the version directory layout, fall back to
- * the major version extracted from the DLL filename:
- *   Qt5Cored.dll  →  "5"
+ * Windows DLL: Qt5Cored.dll under C:\Qt\5.15.2\...  →  "5.15.2"
+ * Linux SO:    libQt5Core.so.5.15.2  →  "5.15.2"
  */
 function qtVersionFromModules(mods: DapModule[]): string | null {
-    const mod = mods.find((m) => /Qt[56]Core(?:d)?\.dll/i.test(m.name ?? ""));
-    if (!mod) { return null; }
-    // Normalise path separators for consistent matching.
-    const fullPath = (mod.path ?? mod.name ?? "").replace(/\\/g, "/");
-    // Standard Qt installer layout: "/Qt/5.15.2/" or "/Qt/6.7.0/"
-    const pathM = fullPath.match(/\/Qt\/(\d+\.\d+(?:\.\d+)*)\//i);
-    if (pathM) { return pathM[1]; }
-    // Fallback: major version only from filename ("Qt5Core.dll" → "5")
-    const nameM = (mod.name ?? "").match(/Qt(\d)Core/i);
-    if (nameM) { return nameM[1]; }
+    // Windows: Qt5Cored.dll, Qt6Core.dll
+    const winMod = mods.find((m) => /Qt[56]Core(?:d)?\.dll/i.test(m.name ?? ""));
+    if (winMod) {
+        const fullPath = (winMod.path ?? winMod.name ?? "").replace(/\\/g, "/");
+        // Standard Qt installer layout: "/Qt/5.15.2/" or "/Qt/6.7.0/"
+        const pathM = fullPath.match(/\/Qt\/(\d+\.\d+(?:\.\d+)*)\//);
+        if (pathM) { return pathM[1]; }
+        // Fallback: major version only from filename
+        const nameM = (winMod.name ?? "").match(/Qt(\d)Core/i);
+        if (nameM) { return nameM[1]; }
+    }
+    // Linux: libQt5Core.so.5.15.2, libQt6Core.so.6.7.0
+    const linuxMod = mods.find((m) => /libQt[56]Core\.so/i.test(m.name ?? ""));
+    if (linuxMod) {
+        const soM = (linuxMod.name ?? "").match(/\.so\.(\d+\.\d+(?:\.\d+)*)/);
+        if (soM) { return soM[1]; }
+    }
     return null;
 }
 
@@ -184,6 +188,7 @@ export async function logCppLibVersions(session: vscode.DebugSession): Promise<v
     const cvModVer  = cvPyVer  ?? cvVersionFromModules(mods);
     const qtModVer  = qtPyVer  ?? qtVersionFromModules(mods);
     const pclModVer = pclPyVer ?? pclVersionFromModules(mods);
+    logger.debug(`[versionInfo] module ver: cv="${cvModVer ?? ""}" qt="${qtModVer ?? ""}" pcl="${pclModVer ?? ""}"`);
 
     // ── Step 3: Per-library expression strategies ─────────────────────────
     const [cvVer, eigenVer, pclVer, qtVer] = await Promise.all([
