@@ -101,9 +101,9 @@
    * Render the current image onto the canvas.
    *
    * Three paths depending on data.encoding:
-   *   "png"              — decompress via ImageBitmap (Python-side PNG encode)
-   *   "deflate"          — decompress via DecompressionStream, then RGBA path
-   *   "raw" / undefined  — existing direct typed-array path
+   *   "png"                        — decompress via ImageBitmap (Python-side PNG encode)
+   *   "deflate"/"gzip"/"deflate-raw" — decompress via DecompressionStream, then RGBA path
+   *   "raw" / undefined            — existing direct typed-array path
    *
    * Decoded results are cached in currentRawBytes / currentBitmap so
    * repeated zoom/pan renders do not re-decompress.
@@ -236,14 +236,17 @@
   }
 
   /**
-   * Decompress a zlib-deflated base64 string using the browser native
+   * Decompress a base64-encoded byte stream using the browser-native
    * DecompressionStream API (no third-party library required).
-   * @param {string} b64 — base64-encoded zlib-compressed bytes
+   *
+   * @param {string} b64       — base64-encoded compressed bytes
+   * @param {string} algorithm — DecompressionStream algorithm tag:
+   *                             "deflate" | "gzip" | "deflate-raw"
    * @returns {Promise<Uint8Array>}
    */
-  async function decompressDeflate(b64) {
+  async function decompress(b64, algorithm) {
     const compressed = b64ToUint8Array(b64);
-    const ds = new DecompressionStream("deflate");
+    const ds = new DecompressionStream(algorithm);
     const writer = ds.writable.getWriter();
     writer.write(compressed);
     writer.close();
@@ -261,8 +264,11 @@
     return out;
   }
 
+  /** Compressed encoding tags that map directly to DecompressionStream algorithm names. */
+  const COMPRESSED_ENCODINGS = new Set(["deflate", "gzip", "deflate-raw"]);
+
   /**
-   * Ensure currentRawBytes is populated for "raw"/"deflate" encoding.
+   * Ensure currentRawBytes is populated for "raw"/"deflate"/"gzip"/"deflate-raw" encoding.
    * Uses the cached value when available (no re-decompression on zoom/pan).
    * Returns null when encoding is "png" (bitmap path used instead).
    * @param {Object} data
@@ -271,8 +277,8 @@
   async function ensureRawBytes(data) {
     if (currentRawBytes) { return currentRawBytes; }
     if (data.encoding === "png") { return null; }
-    if (data.encoding === "deflate") {
-      currentRawBytes = await decompressDeflate(data.b64Bytes);
+    if (COMPRESSED_ENCODINGS.has(data.encoding)) {
+      currentRawBytes = await decompress(data.b64Bytes, data.encoding);
     } else {
       // "raw" or undefined
       currentRawBytes = b64ToUint8Array(data.b64Bytes);

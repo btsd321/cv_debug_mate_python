@@ -178,6 +178,19 @@
           ],
           "description": "Default colormap for single-channel float images"
         },
+        "matrixViewer.image.compression.algorithm": {
+          "type": "string",
+          "default": "auto",
+          "enum": ["auto", "deflate", "gzip", "deflate-raw"],
+          "enumDescriptions": [
+            "Automatically pick the compression level based on data size: deflate-raw level 1 below the high threshold, deflate level 9 above it",
+            "zlib deflate (RFC 1950) level 6 — good compression, broadly supported",
+            "gzip (RFC 1952) level 6 — same compression as deflate, slightly larger due to headers",
+            "raw deflate (RFC 1951) level 6 — lowest overhead, fastest decompression"
+          ],
+          "description": "Compression algorithm used when sending image data to the viewer. All algorithms are decompressed in the browser via the native DecompressionStream API."
+        },
+
         "matrixViewer.image.compression.mode": {
           "type": "string",
           "default": "auto",

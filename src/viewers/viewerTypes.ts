@@ -39,11 +39,16 @@ export interface ImageData {
     format?: ImageFormat;
     /**
      * Encoding of b64Bytes:
-     *   "raw"     — flat pixel bytes (default, existing behaviour)
-     *   "deflate" — zlib-deflate compressed raw bytes (Node.js zlib.deflateSync)
-     *   "png"     — full PNG file bytes (Python-side encode)
+     *   "raw"         — flat pixel bytes (default, existing behaviour)
+     *   "deflate"     — zlib deflate compressed bytes (Node.js zlib.deflateSync)
+     *   "gzip"        — gzip compressed bytes (Node.js zlib.gzipSync)
+     *   "deflate-raw" — raw deflate without zlib header (Node.js zlib.deflateRawSync)
+     *   "png"         — full PNG file bytes (Python-side encode)
+     *
+     * All compressed encodings are decompressible via the browser-native
+     * DecompressionStream API without any third-party library.
      */
-    encoding?: "raw" | "deflate" | "png";
+    encoding?: "raw" | "deflate" | "gzip" | "deflate-raw" | "png";
 }
 
 // ── Plot Viewer ───────────────────────────────────────────────────────────
