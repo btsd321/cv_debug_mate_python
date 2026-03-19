@@ -6,7 +6,7 @@
  * Transfer strategy:
  *   Compress (remote env / above threshold):
  *     Python-side: save image to BytesIO as PNG, send bytes via TCP socket.
- *     Returns ImageData with encoding:"png" — bypasses the DAP 32 K string
+ *     Returns ImageData with encoding:"png" — bypasses the DAP 32K string
  *     limit that previously could silently truncate large PIL images.
  *   No-compress (local env / below threshold):
  *     Existing path: evaluate base64(tobytes()) via DAP.
