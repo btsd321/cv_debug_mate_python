@@ -31,6 +31,8 @@ const IMAGE_TYPE_PATTERNS = [
     /\[\s*\d+\s*\]\s*\[\s*\d+\s*\]/,
     // Qt image: QImage (Qt5 / Qt6)
     /\bQImage\b/,
+    // ROS 2: sensor_msgs::msg::Image_<Alloc> (GDB only — see libs/ros2/)
+    /\bsensor_msgs::msg::Image_\b/,
 ];
 
 // POINTCLOUD checked before PLOT so std::vector<cv::Point3f> → pointcloud, not plot
@@ -41,6 +43,8 @@ const POINTCLOUD_TYPE_PATTERNS = [
     /std::(?:__1::)?(?:vector|array)\s*<[^>]*cv::Point3/,
     // Qt: QVector<QVector3D> or QList<QVector3D> (Qt5/Qt6)
     /Q(?:Vector|List)\s*<\s*QVector3D\s*>/,
+    // ROS 2: sensor_msgs::msg::PointCloud2_<Alloc> (GDB only — see libs/ros2/)
+    /\bsensor_msgs::msg::PointCloud2_\b/,
 ];
 
 const PLOT_TYPE_PATTERNS = [

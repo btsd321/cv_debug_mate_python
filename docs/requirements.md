@@ -33,6 +33,7 @@
 | `cv2.cuda.GpuMat` | OpenCV GPU 矩阵 | 已实现 |
 | `Eigen::Matrix<T,R,C>` / `Eigen::Array<T,R,C>` (rows>1, cols>2) | 单通道灰度图（自动开启归一化） | 已实现 |
 | `QImage` (Qt5 / Qt6) | Qt 图像，支持 Format_Grayscale8 / RGB32 / ARGB32 / RGB888 等格式，兼容 Qt5 (`byteCount()`) 和 Qt6 (`sizeInBytes()`) | 计划中 |
+| `sensor_msgs::msg::Image` (ROS 2) | ROS 2 图像消息，支持 mono8 / mono16 / rgb8 / bgr8 / rgba8 / bgra8 / 8UCx / 32FCx 等编码（自动按 step 去 padding）| 已实现（仅 GDB / cppdbg） |
 
 > **注意**：`numpy.ndarray` 不再作为图像类型直接可视化。  
 > 如需将 numpy 图像数据可视化，请使用 `PIL.Image.fromarray()` 或 `cv2.UMat()` 包装。
@@ -72,6 +73,7 @@
 | `list` / `tuple` of 3-element seqs | 点云列表 | 已实现 |
 | `open3d.geometry.PointCloud` | open3d 点云（含可选颜色） | 已实现 |
 | `QVector<QVector3D>`（Qt5/Qt6）| XYZ 点云（x=x(), y=y(), z=z()） | 计划中 |
+| `sensor_msgs::msg::PointCloud2` (ROS 2) | ROS 2 点云消息，按 PointField 偏移解析 x/y/z (FLOAT32)，可选 rgb/rgba（PCL 字节序 BGRA） | 已实现（仅 GDB / cppdbg） |
 
 ---
 

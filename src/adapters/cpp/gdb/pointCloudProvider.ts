@@ -9,12 +9,14 @@ import { ILibPointCloudProvider } from "../../ILibProviders";
 import { PclPointCloudProvider } from "./libs/pcl/pointCloudProvider";
 import { StdPointCloudProvider } from "./libs/std/pointCloudProvider";
 import { QtPointCloudProvider } from "./libs/qt/pointCloudProvider";
+import { Ros2PointCloudProvider } from "./libs/ros2/pointCloudProvider";
 import { unwrapSmartPointer } from "../shared/utils";
 
 const PROVIDERS: ILibPointCloudProvider[] = [
     new PclPointCloudProvider(),
     new StdPointCloudProvider(),
     new QtPointCloudProvider(),
+    new Ros2PointCloudProvider(),
 ];
 
 export async function fetchGdbPointCloudData(

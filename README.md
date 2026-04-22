@@ -55,11 +55,13 @@ A Visual Studio Code extension for visualizing 1D/2D/3D data structures during d
 | **Image (2D)** | `cv::Mat` (OpenCV) | 🖼️ Image Viewer |
 | | `Eigen::Matrix<T,R,C>` / `Eigen::Array<T,R,C>` (rows>1, cols>2) | 🖼️ Image Viewer |
 | | `QImage` (Qt5 / Qt6) | 🖼️ Image Viewer |
+| | `sensor_msgs::msg::Image` (ROS 2, **GDB only**) | 🖼️ Image Viewer |
 | | `shared_ptr<T>` / `unique_ptr<T>` / `weak_ptr<T>` / `T*` where `T` is any image type above | 🖼️ Image Viewer |
 | **Point Cloud (3D)** | `pcl::PointCloud<PointXYZ>` / `<PointXYZRGB>` / `<PointXYZI>` | 📊 3D Viewer |
 | | `std::vector<cv::Point3f>` / `std::vector<cv::Point3d>` | 📊 3D Viewer |
 | | `std::array<cv::Point3f, N>` / `std::array<cv::Point3d, N>` | 📊 3D Viewer |
 | | `QVector<QVector3D>` (Qt5 / Qt6) | 📊 3D Viewer |
+| | `sensor_msgs::msg::PointCloud2` (ROS 2, **GDB only**) | 📊 3D Viewer |
 | | `shared_ptr<T>` / `unique_ptr<T>` / `weak_ptr<T>` / `T*` where `T` is any point cloud type above | 📊 3D Viewer |
 | **Plot (1D/2D)** | `Eigen::VectorX*` / `Eigen::RowVectorX*` | 📈 1D Chart |
 | | `Eigen::Matrix<T,N,1>` / `Eigen::Matrix<T,1,N>` | 📈 1D Chart |

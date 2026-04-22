@@ -55,11 +55,13 @@
 | **图像（2D）** | `cv::Mat`（OpenCV）| 🖼️ 图像查看器 |
 | | `Eigen::Matrix<T,R,C>` / `Eigen::Array<T,R,C>`（rows>1, cols>2）| 🖼️ 图像查看器 |
 | | `QImage`（Qt5 / Qt6）| 🖼️ 图像查看器 |
+| | `sensor_msgs::msg::Image`（ROS 2，**仅 GDB**）| 🖼️ 图像查看器 |
 | | `shared_ptr<T>` / `unique_ptr<T>` / `weak_ptr<T>` / `T*`，`T` 为上述图像类型 | 🖼️ 图像查看器 |
 | **点云（3D）** | `pcl::PointCloud<PointXYZ>` / `<PointXYZRGB>` / `<PointXYZI>` | 📊 3D 查看器 |
 | | `std::vector<cv::Point3f>` / `std::vector<cv::Point3d>` | 📊 3D 查看器 |
 | | `std::array<cv::Point3f, N>` / `std::array<cv::Point3d, N>` | 📊 3D 查看器 |
 | | `QVector<QVector3D>`（Qt5 / Qt6）| 📊 3D 查看器 |
+| | `sensor_msgs::msg::PointCloud2`（ROS 2，**仅 GDB**）| 📊 3D 查看器 |
 | | `shared_ptr<T>` / `unique_ptr<T>` / `weak_ptr<T>` / `T*`，`T` 为上述点云类型 | 📊 3D 查看器 |
 | **曲线（1D/2D）** | `Eigen::VectorX*` / `Eigen::RowVectorX*` | 📈 1D 折线图 |
 | | `Eigen::Matrix<T,N,1>` / `Eigen::Matrix<T,1,N>` | 📈 1D 折线图 |

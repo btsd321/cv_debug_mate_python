@@ -14,6 +14,7 @@ import { OpenCvImageProvider } from "./libs/opencv/imageProvider";
 import { EigenImageProvider } from "./libs/eigen/imageProvider";
 import { StdImageProvider } from "./libs/std/imageProvider";
 import { QtImageProvider } from "./libs/qt/imageProvider";
+import { Ros2ImageProvider } from "./libs/ros2/imageProvider";
 import { unwrapSmartPointer } from "../shared/utils";
 
 const PROVIDERS: ILibImageProvider[] = [
@@ -21,6 +22,7 @@ const PROVIDERS: ILibImageProvider[] = [
     new EigenImageProvider(),
     new StdImageProvider(),
     new QtImageProvider(),
+    new Ros2ImageProvider(),
 ];
 
 export async function fetchGdbImageData(

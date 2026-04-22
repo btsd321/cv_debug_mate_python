@@ -71,7 +71,8 @@ src/
 │       │   └── libs/
 │       │   ├── utils.ts      # Re-exports ../../shared/utils
 │       │       ├── opencv/   ├── eigen/   ├── pcl/   ├── std/
-│       │       └── qt/       # variableInfoEnricher.ts + existing files
+│       │       ├── qt/       # variableInfoEnricher.ts + existing files
+│       │       └── ros2/     # GDB-only: sensor_msgs::msg::Image / PointCloud2
 │       ├── cppvsdbg/         # vsdbg (session.type = "cppvsdbg") — MSVC, (long long) casts
 │       │   ├── debugger.ts
 │       │   ├── imageProvider.ts
